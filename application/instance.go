@@ -13,6 +13,8 @@ func RunApplication() {
 	e.Router.GET("/apps", appListHandler)
 	e.Router.POST("/app/run", startAppHandler)
 	e.Router.POST("/app/stop", appStopHandler)
+	e.Router.POST("/autoStartApps", appSetAutoStart)
+	e.Router.DELETE("/autoStartApps", appRemoveAutoStart)
 	e.UseCors(cors.AllowAll())
 	e.RunAndListen(config.Config.Addr)
 }

@@ -2,10 +2,12 @@ package service
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/mitchellh/go-ps"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,16 +34,33 @@ type AppManager struct {
 	sync.RWMutex
 }
 
-func (m *AppManager) RunApp(id string) error {
+func (m *AppManager) GetAppByIdApp(id string) *App {
 	for _, app := range m.Apps {
 		if app.Id == id {
-			cmd, err := app.Run()
-			if err != nil {
-				return err
-			}
-			m.Lock()
-			app.Cmd = cmd
-			m.Unlock()
+			return app
+		}
+	}
+	return nil
+}
+func (m *AppManager) RunApp(id string) error {
+	app := m.GetAppByIdApp(id)
+	if app != nil {
+		cmd, err := app.Run()
+		if err != nil {
+			return err
+		}
+		m.Lock()
+		app.Cmd = cmd
+		m.Unlock()
+	}
+	return nil
+}
+func (m *AppManager) SetAutoStart(id string, isAutoStart bool) error {
+	app := m.GetAppByIdApp(id)
+	if app != nil {
+		err := app.SetAutoStart(isAutoStart)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -87,12 +106,13 @@ func (m *AppManager) RunProcessKeeper() {
 }
 
 type App struct {
-	Id           string `json:"-"`
-	AppName      string `json:"app_name"`
-	StartCommand string `json:"start_command"`
-	Dir          string
-	Status       int
-	Cmd          *exec.Cmd
+	Id           string    `json:"-"`
+	AppName      string    `json:"app_name"`
+	StartCommand string    `json:"start_command"`
+	AutoStart    bool      `json:"auto_start"`
+	Dir          string    `json:"-"`
+	Status       int       `json:"-"`
+	Cmd          *exec.Cmd `json:"-"`
 }
 
 func (a *App) Run() (*exec.Cmd, error) {
@@ -120,6 +140,22 @@ func (a *App) Stop() error {
 	return nil
 }
 
+func (a *App) SaveConfig() error {
+	file, err := json.MarshalIndent(a, "", " ")
+	if err != nil {
+		return err
+	}
+	configPath := filepath.Join(a.Dir, "youplus.json")
+	currentFile, err := os.Stat(configPath)
+	err = ioutil.WriteFile(configPath, file, currentFile.Mode().Perm())
+	return err
+}
+func (a *App) SetAutoStart(isAutoStart bool) error {
+	a.AutoStart = isAutoStart
+	err := a.SaveConfig()
+	return err
+}
+
 func LoadApps() error {
 	apps := make([]*App, 0)
 	file, err := os.Open("apps")
@@ -141,6 +177,10 @@ func LoadApps() error {
 		if err != nil {
 			logrus.Error(err)
 			continue
+		}
+		if app.AutoStart {
+			cmd, _ := app.Run()
+			app.Cmd = cmd
 		}
 		apps = append(apps, app)
 	}
