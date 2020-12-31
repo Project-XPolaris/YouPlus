@@ -1,5 +1,3 @@
-github.com/allentom/haruka v0.0.0-20201223093851-f875858e397c h1:TgdAgZUKU60BE96I8/s/w0RkpnGy2fuTHGikHqyIC4c=
-github.com/allentom/haruka v0.0.0-20201223093851-f875858e397c/go.mod h1:ImEr3Z9TtRBOuzaPgH1XJIFRcbDsnVx9GhW56aPrx5k=
 github.com/allentom/haruka v0.0.0-20201229093455-115f7b527b80 h1:OlfhqrXaTH3NAhwldmp14JsvXDwcy1OLUYPwK1NrHqY=
 github.com/allentom/haruka v0.0.0-20201229093455-115f7b527b80/go.mod h1:CUMaE+ZhY3wsTZQ6ymOCoxT3Ylk5psGDBtBH+9i/GfE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
