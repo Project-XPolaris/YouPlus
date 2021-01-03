@@ -11,6 +11,8 @@ func RunApplication() {
 	e := haruka.NewEngine()
 	e.UseMiddleware(middleware.NewLoggerMiddleware())
 	e.Router.GET("/apps", appListHandler)
+	e.Router.POST("/apps", addAppHandler)
+	e.Router.DELETE("/apps", removeAppHandler)
 	e.Router.POST("/app/run", startAppHandler)
 	e.Router.POST("/app/stop", appStopHandler)
 	e.Router.POST("/autoStartApps", appSetAutoStart)

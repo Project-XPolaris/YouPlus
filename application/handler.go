@@ -85,3 +85,45 @@ var appRemoveAutoStart haruka.RequestHandler = func(context *haruka.Context) {
 		"success": true,
 	})
 }
+
+type AddAppRequestBody struct {
+	Path string `json:"path"`
+}
+
+var addAppHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var body AddAppRequestBody
+	err := context.ParseJson(&body)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
+	err = service.DefaultAppManager.AddApp(body.Path)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
+	context.JSON(map[string]interface{}{
+		"success": true,
+	})
+}
+
+type RemoveAppRequestBody struct {
+	Path string `json:"path"`
+}
+
+var removeAppHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var body RemoveAppRequestBody
+	err := context.ParseJson(&body)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
+	err = service.DefaultAppManager.RemoveApp(body.Path)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
+	context.JSON(map[string]interface{}{
+		"success": true,
+	})
+}

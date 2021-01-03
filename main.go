@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/jessevdk/go-flags"
 	srv "github.com/kardianos/service"
 	"github.com/sirupsen/logrus"
@@ -13,15 +14,11 @@ import (
 
 var svcConfig *srv.Config
 
-func initService() error {
-	workPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		return err
-	}
+func initService(workDir string) error {
 	svcConfig = &srv.Config{
 		Name:             "YouPlusCoreService",
 		DisplayName:      "YouPlus Core Service",
-		WorkingDirectory: workPath,
+		WorkingDirectory: workDir,
 	}
 	return nil
 }
@@ -86,7 +83,16 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	err = initService()
+	workPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = initService(workPath)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	//set env
+	logrus.Info(fmt.Sprintf("work_path =  %s", workPath))
 	if err != nil {
 		logrus.Fatal(err)
 	}
