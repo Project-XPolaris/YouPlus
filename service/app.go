@@ -3,7 +3,9 @@ package service
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	srv "github.com/kardianos/service"
 	"github.com/mitchellh/go-ps"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
@@ -29,6 +31,19 @@ var StatusTextMapping map[int]string = map[int]string{
 	StatusRunning: "Running",
 }
 
+const (
+	AppTypeRunnable = "Runnable"
+	AppTypeService  = "Service"
+)
+
+var AppLogger = logrus.New().WithField("scope", "AppManager")
+var NotFound = errors.New("service is nil")
+var ServiceStatusMapping = map[srv.Status]int{
+	srv.StatusRunning: StatusRunning,
+	srv.StatusStopped: StatusStop,
+	srv.StatusUnknown: StatusStop,
+}
+
 type AppManager struct {
 	Apps []*App
 	sync.RWMutex
@@ -45,13 +60,21 @@ func (m *AppManager) GetAppByIdApp(id string) *App {
 func (m *AppManager) RunApp(id string) error {
 	app := m.GetAppByIdApp(id)
 	if app != nil {
-		cmd, err := app.Run()
-		if err != nil {
-			return err
-		}
 		m.Lock()
-		app.Cmd = cmd
-		m.Unlock()
+		defer m.Unlock()
+		if app.Type == AppTypeRunnable {
+			cmd, err := app.RunCommand()
+			if err != nil {
+				return err
+			}
+			app.Cmd = cmd
+		}
+		if app.Type == AppTypeService {
+			err := app.RunService()
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -122,21 +145,12 @@ func (m *AppManager) StopApp(id string) error {
 
 func (m *AppManager) RunProcessKeeper() {
 	go func() {
-		logrus.Info("running process keeper")
+		AppLogger.Info("running process keeper")
 		for {
 			<-time.After(1 * time.Second)
 			m.Lock()
 			for _, app := range m.Apps {
-				if app.Cmd != nil {
-					process, err := ps.FindProcess(app.Cmd.Process.Pid)
-					if err != nil || process == nil {
-						app.Status = StatusStop
-					}
-					app.Status = StatusRunning
-				} else {
-					app.Status = StatusStop
-				}
-
+				app.UpdateStatus()
 			}
 			m.Unlock()
 		}
@@ -144,16 +158,19 @@ func (m *AppManager) RunProcessKeeper() {
 }
 
 type App struct {
-	Id           string    `json:"-"`
-	AppName      string    `json:"app_name"`
-	StartCommand string    `json:"start_command"`
-	AutoStart    bool      `json:"auto_start"`
-	Dir          string    `json:"-"`
-	Status       int       `json:"-"`
-	Cmd          *exec.Cmd `json:"-"`
+	Id           string      `json:"-"`
+	AppName      string      `json:"app_name"`
+	Type         string      `json:"type"`
+	ServiceName  string      `json:"service_name"`
+	StartCommand string      `json:"start_command"`
+	AutoStart    bool        `json:"auto_start"`
+	Dir          string      `json:"-"`
+	Status       int         `json:"-"`
+	Cmd          *exec.Cmd   `json:"-"`
+	Service      srv.Service `json:"-"`
 }
 
-func (a *App) Run() (*exec.Cmd, error) {
+func (a *App) RunCommand() (*exec.Cmd, error) {
 	parts := strings.Split(a.StartCommand, " ")
 	arg := make([]string, 0)
 	if len(parts) > 1 {
@@ -169,15 +186,52 @@ func (a *App) Run() (*exec.Cmd, error) {
 	return cmd, nil
 }
 func (a *App) Stop() error {
-	if a.Cmd != nil {
+	if a.Cmd != nil && a.Type == AppTypeRunnable {
 		err := a.Cmd.Process.Kill()
+		if err != nil {
+			return err
+		}
+	}
+	if a.Service != nil && a.Type == AppTypeService {
+		err := a.StopService()
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-
+func (a *App) UpdateStatus() error {
+	if a.Type == AppTypeRunnable && a.Cmd != nil {
+		process, err := ps.FindProcess(a.Cmd.Process.Pid)
+		if err != nil || process == nil {
+			a.Status = StatusStop
+		}
+		a.Status = StatusRunning
+		return nil
+	}
+	if a.Type == AppTypeService && a.Service != nil {
+		status, err := a.Service.Status()
+		if err != nil {
+			a.Status = StatusStop
+			return err
+		}
+		a.Status = ServiceStatusMapping[status]
+		return nil
+	}
+	a.Status = StatusStop
+	return nil
+}
+func (a *App) RunService() error {
+	if a.Service == nil {
+		return NotFound
+	}
+	appService, _ := GetServiceByName(strings.ReplaceAll(a.ServiceName, ".service", ""))
+	return appService.Start()
+}
+func (a *App) StopService() error {
+	appService, _ := GetServiceByName(strings.ReplaceAll(a.ServiceName, ".service", ""))
+	return appService.Stop()
+}
 func (a *App) SaveConfig() error {
 	file, err := json.MarshalIndent(a, "", " ")
 	if err != nil {
@@ -206,9 +260,41 @@ func (m *AppManager) LoadApp(path string) error {
 	if err != nil {
 		return err
 	}
-	if app.AutoStart {
-		cmd, _ := app.Run()
-		app.Cmd = cmd
+	switch app.Type {
+	case AppTypeRunnable:
+		if app.AutoStart {
+			cmd, _ := app.RunCommand()
+			app.Cmd = cmd
+		}
+	case AppTypeService:
+		appService, err := GetServiceByName(app.ServiceName)
+		if err != nil {
+			return err
+		}
+		app.Service = appService
+		status, err := appService.Status()
+		if err != nil {
+			//no service
+			AppLogger.WithFields(logrus.Fields{
+				"App":         app.AppName,
+				"ServiceName": app.ServiceName,
+				"on":          "Get service status",
+			}).Error(err)
+			return err
+		}
+		if app.AutoStart && status == srv.StatusStopped {
+			err = app.RunService()
+			if err != nil {
+				// auto start error
+				AppLogger.WithFields(logrus.Fields{
+					"App":         app.AppName,
+					"ServiceName": app.ServiceName,
+					"on":          "Autostart app",
+				})
+				logrus.Error(err)
+				return err
+			}
+		}
 	}
 	m.Apps = append(m.Apps, app)
 	return nil
@@ -228,7 +314,7 @@ func LoadApps() error {
 		line = strings.TrimSpace(line)
 		err = DefaultAppManager.LoadApp(line)
 		if err != nil {
-			logrus.Error(err)
+			AppLogger.Error(err)
 			continue
 		}
 	}
@@ -237,7 +323,14 @@ func LoadApps() error {
 		return err
 	}
 
-	logrus.Info(fmt.Sprintf("success load %d apps", len(DefaultAppManager.Apps)))
+	AppLogger.Info(fmt.Sprintf("success load %d apps", len(DefaultAppManager.Apps)))
 	DefaultAppManager.RunProcessKeeper()
 	return nil
+}
+
+func GetServiceByName(name string) (target srv.Service, err error) {
+	target, err = srv.New(nil, &srv.Config{
+		Name: name,
+	})
+	return
 }
