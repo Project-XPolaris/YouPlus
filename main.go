@@ -23,7 +23,13 @@ func initService(workDir string) error {
 	return nil
 }
 func Program() {
+	// config
 	err := config.LoadAppConfig()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	// docker client
+	err = service.InitDockerClient()
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -34,13 +40,11 @@ func Program() {
 type program struct{}
 
 func (p *program) Start(s srv.Service) error {
-	// Start should not block. Do the actual work async.
 	go Program()
 	return nil
 }
 
 func (p *program) Stop(s srv.Service) error {
-	// Stop should not block. Return with a few seconds.
 	return nil
 }
 
@@ -79,10 +83,12 @@ var opts struct {
 }
 
 func main() {
+	// flags
 	_, err := flags.ParseArgs(&opts, os.Args)
 	if err != nil {
 		logrus.Fatal(err)
 	}
+	// service
 	workPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		logrus.Fatal(err)
@@ -91,11 +97,7 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	//set env
 	logrus.Info(fmt.Sprintf("work_path =  %s", workPath))
-	if err != nil {
-		logrus.Fatal(err)
-	}
 	if opts.Install {
 		InstallAsService()
 		return

@@ -2,9 +2,11 @@ package service
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/docker/docker/api/types"
 	srv "github.com/kardianos/service"
 	"github.com/mitchellh/go-ps"
 	"github.com/rs/xid"
@@ -32,16 +34,22 @@ var StatusTextMapping map[int]string = map[int]string{
 }
 
 const (
-	AppTypeRunnable = "Runnable"
-	AppTypeService  = "Service"
+	AppTypeRunnable  = "Runnable"
+	AppTypeService   = "Service"
+	AppTypeContainer = "Container"
 )
 
 var AppLogger = logrus.New().WithField("scope", "AppManager")
-var NotFound = errors.New("service is nil")
+var NotFound = errors.New("app is nil")
 var ServiceStatusMapping = map[srv.Status]int{
 	srv.StatusRunning: StatusRunning,
 	srv.StatusStopped: StatusStop,
 	srv.StatusUnknown: StatusStop,
+}
+
+var DockerStateMapping = map[string]int{
+	"running": StatusRunning,
+	"exited":  StatusStop,
 }
 
 type AppManager struct {
@@ -71,6 +79,12 @@ func (m *AppManager) RunApp(id string) error {
 		}
 		if app.Type == AppTypeService {
 			err := app.RunService()
+			if err != nil {
+				return err
+			}
+		}
+		if app.Type == AppTypeContainer {
+			err := app.StartContainer()
 			if err != nil {
 				return err
 			}
@@ -158,16 +172,18 @@ func (m *AppManager) RunProcessKeeper() {
 }
 
 type App struct {
-	Id           string      `json:"-"`
-	AppName      string      `json:"app_name"`
-	Type         string      `json:"type"`
-	ServiceName  string      `json:"service_name"`
-	StartCommand string      `json:"start_command"`
-	AutoStart    bool        `json:"auto_start"`
-	Dir          string      `json:"-"`
-	Status       int         `json:"-"`
-	Cmd          *exec.Cmd   `json:"-"`
-	Service      srv.Service `json:"-"`
+	Id            string           `json:"-"`
+	AppName       string           `json:"app_name"`
+	Type          string           `json:"type"`
+	ServiceName   string           `json:"service_name"`
+	StartCommand  string           `json:"start_command"`
+	ContainerName string           `json:"container_name"`
+	AutoStart     bool             `json:"auto_start"`
+	Container     *types.Container `json:"-"`
+	Dir           string           `json:"-"`
+	Status        int              `json:"-"`
+	Cmd           *exec.Cmd        `json:"-"`
+	Service       srv.Service      `json:"-"`
 }
 
 func (a *App) RunCommand() (*exec.Cmd, error) {
@@ -198,6 +214,12 @@ func (a *App) Stop() error {
 			return err
 		}
 	}
+	if a.Container != nil && a.Type == AppTypeContainer {
+		err := a.StopContainer()
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 func (a *App) UpdateStatus() error {
@@ -218,6 +240,14 @@ func (a *App) UpdateStatus() error {
 		a.Status = ServiceStatusMapping[status]
 		return nil
 	}
+	if a.Type == AppTypeContainer && a.Container != nil {
+		container, err := GetContainerByName(DockerClient, a.ContainerName)
+		if err != nil {
+			return err
+		}
+		a.Status = DockerStateMapping[container.State]
+		return nil
+	}
 	a.Status = StatusStop
 	return nil
 }
@@ -231,6 +261,39 @@ func (a *App) RunService() error {
 func (a *App) StopService() error {
 	appService, _ := GetServiceByName(strings.ReplaceAll(a.ServiceName, ".service", ""))
 	return appService.Stop()
+}
+
+func (a *App) StartContainer() error {
+	if DockerClient == nil || a.Container == nil {
+		return nil
+	}
+	ctx := context.Background()
+	err := DockerClient.ContainerStart(ctx, a.Container.ID, types.ContainerStartOptions{})
+	if err != nil {
+		return err
+	}
+	AppLogger.WithFields(logrus.Fields{
+		"app":          a.AppName,
+		"container_id": a.Container.ID,
+	}).Info("container started")
+	return nil
+}
+
+func (a *App) StopContainer() error {
+	if DockerClient == nil || a.Container == nil {
+		return nil
+	}
+	ctx := context.Background()
+	timeout := time.Second * 30
+	err := DockerClient.ContainerStop(ctx, a.Container.ID, &timeout)
+	if err != nil {
+		return err
+	}
+	AppLogger.WithFields(logrus.Fields{
+		"app":          a.AppName,
+		"container_id": a.Container.ID,
+	}).Info("container stop")
+	return nil
 }
 func (a *App) SaveConfig() error {
 	file, err := json.MarshalIndent(a, "", " ")
@@ -295,6 +358,16 @@ func (m *AppManager) LoadApp(path string) error {
 				return err
 			}
 		}
+	case AppTypeContainer:
+		container, err := GetContainerByName(DockerClient, app.ContainerName)
+		if err != nil {
+			return err
+		}
+		if container == nil {
+			return NotFound
+		}
+		app.Container = container
+		app.Status = DockerStateMapping[container.State]
 	}
 	m.Apps = append(m.Apps, app)
 	return nil
