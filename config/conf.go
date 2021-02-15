@@ -8,8 +8,14 @@ import (
 
 var Config AppConfig
 
+type ShareFolderConfig struct {
+	PartName string `json:"part_name,omitempty"`
+	Part     string `json:"part,omitempty"`
+}
 type AppConfig struct {
-	Addr string `json:"addr"`
+	Addr       string               `json:"addr"`
+	YouSMBAddr string               `json:"yousmb_addr"`
+	Folders    []*ShareFolderConfig `json:"folders"`
 }
 
 func LoadAppConfig() error {
@@ -21,5 +27,10 @@ func LoadAppConfig() error {
 	raw, _ := ioutil.ReadAll(jsonFile)
 
 	err = json.Unmarshal(raw, &Config)
+	return err
+}
+func (c *AppConfig) UpdateConfig() error {
+	file, _ := json.MarshalIndent(c, "", "  ")
+	err := ioutil.WriteFile("config.json", file, 0644)
 	return err
 }

@@ -17,6 +17,8 @@ func RunApplication() {
 	e.Router.POST("/app/stop", appStopHandler)
 	e.Router.POST("/autoStartApps", appSetAutoStart)
 	e.Router.DELETE("/autoStartApps", appRemoveAutoStart)
+	e.Router.GET("/disks", getDiskListHandler)
+	e.Router.POST("/share", createShareHandler)
 	e.UseCors(cors.AllowAll())
 	e.RunAndListen(config.Config.Addr)
 }

@@ -2,6 +2,7 @@ package application
 
 import (
 	"github.com/allentom/haruka"
+	"net/http"
 	"youplus/service"
 )
 
@@ -125,5 +126,29 @@ var removeAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 	}
 	context.JSON(map[string]interface{}{
 		"success": true,
+	})
+}
+
+var createShareHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var requestBody service.NewShareFolderOption
+	err := context.ParseJson(&requestBody)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.CreateNewShareFolder(&requestBody)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
+
+var getDiskListHandler haruka.RequestHandler = func(context *haruka.Context) {
+	disks := service.ReadDiskList()
+	context.JSON(haruka.JSON{
+		"disks": disks,
 	})
 }
