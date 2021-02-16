@@ -152,3 +152,36 @@ var getDiskListHandler haruka.RequestHandler = func(context *haruka.Context) {
 		"disks": disks,
 	})
 }
+
+type CreateUserRequestBody struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+var createUserHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var body CreateUserRequestBody
+	err := context.ParseJson(&body)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.NewUser(body.Username, body.Password)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
+
+var getUserList haruka.RequestHandler = func(context *haruka.Context) {
+	userList, err := service.GetUserList()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"users": userList,
+	})
+}

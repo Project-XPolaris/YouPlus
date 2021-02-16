@@ -16,6 +16,7 @@ type AppConfig struct {
 	Addr       string               `json:"addr"`
 	YouSMBAddr string               `json:"yousmb_addr"`
 	Folders    []*ShareFolderConfig `json:"folders"`
+	Users      []string             `json:"users"`
 }
 
 func LoadAppConfig() error {
