@@ -19,6 +19,7 @@ func RunApplication() {
 	e.Router.DELETE("/autoStartApps", appRemoveAutoStart)
 	e.Router.GET("/disks", getDiskListHandler)
 	e.Router.POST("/share", createShareHandler)
+	e.Router.GET("/share", getShareFolderList)
 	e.Router.POST("/users", createUserHandler)
 	e.Router.GET("/users", getUserList)
 	e.UseCors(cors.AllowAll())

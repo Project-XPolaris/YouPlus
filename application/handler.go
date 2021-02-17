@@ -185,3 +185,14 @@ var getUserList haruka.RequestHandler = func(context *haruka.Context) {
 		"users": userList,
 	})
 }
+
+var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
+	folderList, err := service.GetShareFolders()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"folders": folderList,
+	})
+}

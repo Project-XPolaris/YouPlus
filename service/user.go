@@ -9,6 +9,7 @@ import (
 	"strings"
 	"youplus/config"
 	"youplus/utils"
+	"youplus/yousmb"
 )
 
 type SystemUser struct {
@@ -84,6 +85,11 @@ func NewUser(username string, password string) error {
 	}
 	cmd = exec.Command("/bin/sh", "-c", fmt.Sprintf("echo %s:%s | chpasswd", username, password))
 	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+	// add smb user
+	err = yousmb.AddUser(username, password)
 	if err != nil {
 		return err
 	}

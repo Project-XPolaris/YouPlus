@@ -14,8 +14,11 @@ var (
 )
 
 type NewShareFolderOption struct {
-	PartName string `json:"part_name,omitempty"`
-	Name     string `json:"name,omitempty"`
+	PartName   string   `json:"part_name,omitempty"`
+	Name       string   `json:"name,omitempty"`
+	Public     bool     `json:"public"`
+	ValidUsers []string `json:"valid_users"`
+	WriteList  []string `json:"write_list"`
 }
 
 func CreateNewShareFolder(option *NewShareFolderOption) error {
@@ -31,7 +34,13 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 	if err != nil {
 		return err
 	}
-	err = yousmb.CreateNewShare(option.Name, shareFolderPath)
+	err = yousmb.CreateNewShare(&yousmb.CreateShareOption{
+		Name:       option.Name,
+		Path:       shareFolderPath,
+		Public:     option.Public,
+		ValidUsers: option.ValidUsers,
+		WriteList:  option.WriteList,
+	})
 	if err != nil {
 		return err
 	}
@@ -44,4 +53,8 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 		return err
 	}
 	return nil
+}
+
+func GetShareFolders() ([]*config.ShareFolderConfig, error) {
+	return config.Config.Folders, nil
 }
