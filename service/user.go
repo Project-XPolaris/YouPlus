@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	. "github.com/ahmetb/go-linq/v3"
+	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/utils"
+	"github.com/projectxpolaris/youplus/yousmb"
 	"os"
 	"os/exec"
 	"strings"
-	"youplus/config"
-	"youplus/utils"
-	"youplus/yousmb"
 )
 
 type SystemUser struct {

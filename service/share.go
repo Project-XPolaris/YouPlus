@@ -2,10 +2,10 @@ package service
 
 import (
 	"errors"
+	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/yousmb"
 	"os"
 	"path/filepath"
-	"youplus/config"
-	"youplus/yousmb"
 )
 
 var (

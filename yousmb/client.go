@@ -2,9 +2,9 @@ package yousmb
 
 import (
 	"fmt"
+	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/utils"
 	"strings"
-	"youplus/config"
-	"youplus/utils"
 )
 
 type CreateShareOption struct {

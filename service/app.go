@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types"
 	srv "github.com/kardianos/service"
 	"github.com/mitchellh/go-ps"
+	"github.com/projectxpolaris/youplus/utils"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
@@ -18,7 +19,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"youplus/utils"
 )
 
 var DefaultAppManager *AppManager

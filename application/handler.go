@@ -2,8 +2,8 @@ package application
 
 import (
 	"github.com/allentom/haruka"
+	"github.com/projectxpolaris/youplus/service"
 	"net/http"
-	"youplus/service"
 )
 
 var startAppHandler haruka.RequestHandler = func(context *haruka.Context) {

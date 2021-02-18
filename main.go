@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/jessevdk/go-flags"
 	srv "github.com/kardianos/service"
+	"github.com/projectxpolaris/youplus/application"
+	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/service"
 	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
-	"youplus/application"
-	"youplus/config"
-	"youplus/service"
 )
 
 var svcConfig *srv.Config

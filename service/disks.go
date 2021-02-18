@@ -1,6 +1,6 @@
 package service
 
-import "youplus/utils"
+import "github.com/projectxpolaris/youplus/utils"
 
 type Disk struct {
 	Name  string  `json:"name,omitempty"`

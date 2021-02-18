@@ -1,4 +1,4 @@
-module youplus
+module github.com/projectxpolaris/youplus
 
 go 1.15
 

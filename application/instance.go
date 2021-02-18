@@ -3,8 +3,8 @@ package application
 import (
 	"github.com/allentom/haruka"
 	"github.com/allentom/haruka/middleware"
+	"github.com/projectxpolaris/youplus/config"
 	"github.com/rs/cors"
-	"youplus/config"
 )
 
 func RunApplication() {
