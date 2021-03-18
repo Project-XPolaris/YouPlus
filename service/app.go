@@ -179,6 +179,7 @@ type App struct {
 	StartCommand  string           `json:"start_command"`
 	ContainerName string           `json:"container_name"`
 	AutoStart     bool             `json:"auto_start"`
+	Icon          string           `json:"icon"`
 	Container     *types.Container `json:"-"`
 	Dir           string           `json:"-"`
 	Status        int              `json:"-"`

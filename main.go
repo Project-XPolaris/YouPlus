@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jessevdk/go-flags"
 	srv "github.com/kardianos/service"
@@ -28,8 +29,24 @@ func Program() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
+	err = service.DefaultUserManager.LoadUser()
+	if err != nil {
+		logrus.Fatal(err)
+	}
 	// docker client
 	err = service.InitDockerClient()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = service.LoadFstab()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = service.DefaultZFSManager.LoadZFS()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = service.DefaultStoragePool.LoadStorage()
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -77,9 +94,48 @@ func UnInstall() {
 	logrus.Info("successful uninstall service")
 }
 
+func CreateAdmin() {
+	err := config.LoadAppConfig()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = service.DefaultUserManager.LoadUser()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	logrus.Info("create user group")
+	err = service.DefaultUserManager.CreateGroup("youplusadmin")
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	group := service.DefaultUserManager.GetGroupByName("youplusadmin")
+	if group == nil {
+		logrus.Fatal(errors.New("create group failed"))
+	}
+	logrus.Info("create user")
+	err = service.DefaultUserManager.NewUser(opts.Username, opts.Password, opts.OnlyAdmin)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	user := service.DefaultUserManager.GetUserByName(opts.Username)
+	if user == nil {
+		logrus.Fatal(errors.New("create user failed"))
+	}
+	logrus.Info("init admin account")
+	err = group.AddUser(user)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	logrus.Info("add admin success")
+}
+
 var opts struct {
-	Install   bool `short:"i" long:"install" description:"Show verbose debug information"`
-	Uninstall bool `short:"u" long:"uninstall" description:"Show verbose debug information"`
+	Install     bool   `short:"i" long:"install" description:"install service"`
+	Uninstall   bool   `short:"u" long:"uninstall" description:"uninstall service"`
+	CreateAdmin bool   `short:"c" long:"adminadd" description:"create new admin"`
+	Username    string `short:"n" long:"user" description:"username"`
+	Password    string `short:"p" long:"pwd" description:"password"`
+	OnlyAdmin   bool   `long:"onlyadmin" description:"only create for youplus not create smb account"`
 }
 
 func main() {
@@ -87,6 +143,7 @@ func main() {
 	_, err := flags.ParseArgs(&opts, os.Args)
 	if err != nil {
 		logrus.Fatal(err)
+		return
 	}
 	// service
 	workPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
@@ -104,6 +161,11 @@ func main() {
 	}
 	if opts.Uninstall {
 		UnInstall()
+		return
+	}
+
+	if opts.CreateAdmin {
+		CreateAdmin()
 		return
 	}
 	Program()

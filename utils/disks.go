@@ -93,6 +93,9 @@ func Lsblk() Disks {
 }
 
 func DiskUsage(path string) string {
-	usage, _ := disk.Usage(path)
+	usage, err := disk.Usage(path)
+	if err != nil {
+		return ""
+	}
 	return strconv.Itoa(int(usage.Used))
 }

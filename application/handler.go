@@ -1,9 +1,11 @@
 package application
 
 import (
+	"fmt"
 	"github.com/allentom/haruka"
 	"github.com/projectxpolaris/youplus/service"
 	"net/http"
+	"path/filepath"
 )
 
 var startAppHandler haruka.RequestHandler = func(context *haruka.Context) {
@@ -13,7 +15,7 @@ var startAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, 500)
 		return
 	}
-	context.JSON(map[string]interface{}{
+	context.JSON(haruka.JSON{
 		"success": true,
 	})
 }
@@ -26,13 +28,14 @@ var appListHandler haruka.RequestHandler = func(context *haruka.Context) {
 			Name:      app.AppName,
 			Status:    service.StatusTextMapping[app.Status],
 			AutoStart: app.AutoStart,
+			Icon:      app.Icon,
 		}
 		if app.Cmd != nil {
 			appTemplate.Pid = app.Cmd.Process.Pid
 		}
 		data = append(data, appTemplate)
 	}
-	context.JSON(map[string]interface{}{
+	context.JSON(haruka.JSON{
 		"apps": data,
 	})
 }
@@ -44,7 +47,7 @@ var appStopHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, 500)
 		return
 	}
-	context.JSON(map[string]interface{}{
+	context.JSON(haruka.JSON{
 		"success": true,
 	})
 }
@@ -65,7 +68,7 @@ var appSetAutoStart haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, 500)
 		return
 	}
-	context.JSON(map[string]interface{}{
+	context.JSON(haruka.JSON{
 		"success": true,
 	})
 }
@@ -82,7 +85,7 @@ var appRemoveAutoStart haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, 500)
 		return
 	}
-	context.JSON(map[string]interface{}{
+	context.JSON(haruka.JSON{
 		"success": true,
 	})
 }
@@ -103,7 +106,7 @@ var addAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, 500)
 		return
 	}
-	context.JSON(map[string]interface{}{
+	context.JSON(haruka.JSON{
 		"success": true,
 	})
 }
@@ -124,7 +127,7 @@ var removeAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, 500)
 		return
 	}
-	context.JSON(map[string]interface{}{
+	context.JSON(haruka.JSON{
 		"success": true,
 	})
 }
@@ -165,7 +168,7 @@ var createUserHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
 	}
-	err = service.NewUser(body.Username, body.Password)
+	err = service.DefaultUserManager.NewUser(body.Username, body.Password, false)
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
@@ -195,4 +198,152 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 	context.JSON(haruka.JSON{
 		"folders": folderList,
 	})
+}
+
+type NewStorageRequest struct {
+	Source string `json:"source"`
+	Type   string `json:"type"`
+}
+
+var newStorage haruka.RequestHandler = func(context *haruka.Context) {
+	var body NewStorageRequest
+	err := context.ParseJson(&body)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.DefaultStoragePool.NewStorage(body.Source, body.Type)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
+
+var getStorageListHandler haruka.RequestHandler = func(context *haruka.Context) {
+	data := make([]*StorageTemplate, 0)
+	for _, storage := range service.DefaultStoragePool.Storages {
+		template := &StorageTemplate{}
+		template.Assign(storage)
+		data = append(data, template)
+	}
+	context.JSON(haruka.JSON{
+		"storages": data,
+	})
+}
+
+var removeStorage haruka.RequestHandler = func(context *haruka.Context) {
+	id := context.GetQueryString("id")
+	err := service.DefaultAppManager.StopApp(id)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
+	err = service.DefaultStoragePool.RemoveStorage(id)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
+
+type CreateZFSPoolRequestBody struct {
+	Name  string   `json:"name"`
+	Disks []string `json:"disks"`
+}
+
+var createZFSPoolHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var body CreateZFSPoolRequestBody
+	err := context.ParseJson(&body)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.DefaultZFSManager.CreatePool(body.Name, body.Disks...)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
+
+var getZFSPoolListHandler haruka.RequestHandler = func(context *haruka.Context) {
+	data := make([]*ZFSPoolTemplate, 0)
+	for _, pool := range service.DefaultZFSManager.Pools {
+		template := &ZFSPoolTemplate{}
+		template.Assign(pool)
+		data = append(data, template)
+	}
+	context.JSON(haruka.JSON{
+		"pools": data,
+	})
+}
+
+var removePoolHandler haruka.RequestHandler = func(context *haruka.Context) {
+	name := context.GetQueryString("name")
+	fmt.Println(name)
+	err := service.DefaultZFSManager.RemovePool(name)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
+
+type UserAuthRequestBody struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+var userLoginHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var body UserAuthRequestBody
+	err := context.ParseJson(&body)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	tokenStr, err := service.UserLogin(body.Username, body.Password)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+		"token":   tokenStr,
+	})
+}
+
+var checkTokenHandler haruka.RequestHandler = func(context *haruka.Context) {
+	rawToken := context.GetQueryString("token")
+	user, err := service.ParseUser(rawToken)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success":  true,
+		"username": user.Username,
+		"uid":      user.Uid,
+	})
+}
+
+var appIconHandler haruka.RequestHandler = func(context *haruka.Context) {
+	id := context.GetQueryString("id")
+	app := service.DefaultAppManager.GetAppByIdApp(id)
+	if app == nil || len(app.Icon) == 0 {
+		context.JSON(haruka.JSON{
+			"success": false,
+			"token":   "app not found",
+		})
+		return
+	}
+	http.ServeFile(context.Writer, context.Request, filepath.Join(app.Dir, app.Icon))
 }

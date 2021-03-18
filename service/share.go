@@ -14,22 +14,19 @@ var (
 )
 
 type NewShareFolderOption struct {
-	PartName   string   `json:"part_name,omitempty"`
+	StorageId  string   `json:"storageId,omitempty"`
 	Name       string   `json:"name,omitempty"`
-	Public     bool     `json:"public"`
-	ValidUsers []string `json:"valid_users"`
-	WriteList  []string `json:"write_list"`
+	Public     bool     `json:"public,omitempty"`
+	ValidUsers []string `json:"valid_users,omitempty"`
+	WriteList  []string `json:"write_list,omitempty"`
 }
 
 func CreateNewShareFolder(option *NewShareFolderOption) error {
-	part := GetPartByName(option.PartName)
-	if part == nil {
-		return PartNotFoundError
+	storage := DefaultStoragePool.GetStorageById(option.StorageId)
+	if storage == nil {
+		return StorageNotFoundError
 	}
-	if len(part.MountPoint) == 0 {
-		return PartNotMountError
-	}
-	shareFolderPath := filepath.Join(part.MountPoint, option.Name)
+	shareFolderPath := filepath.Join(storage.GetRootPath(), option.Name)
 	err := os.MkdirAll(shareFolderPath, os.ModePerm)
 	if err != nil {
 		return err
@@ -45,8 +42,8 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 		return err
 	}
 	config.Config.Folders = append(config.Config.Folders, &config.ShareFolderConfig{
-		PartName: option.PartName,
-		Part:     option.Name,
+		StorageId: option.StorageId,
+		Part:      option.Name,
 	})
 	err = config.Config.UpdateConfig()
 	if err != nil {

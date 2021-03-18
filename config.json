@@ -1,3 +1,11 @@
 {
-  "addr": ":8999"
+  "addr": ":8999",
+  "api_key": "youplus_api_key",
+  "yousmb_addr": "http://localhost:8200",
+  "folders": [],
+  "users": [
+
+  ],
+  "fstab": "/etc/fstab",
+  "storage": []
 }

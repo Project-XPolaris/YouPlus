@@ -2,6 +2,7 @@ package service
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	. "github.com/ahmetb/go-linq/v3"
 	"github.com/projectxpolaris/youplus/config"
@@ -11,6 +12,79 @@ import (
 	"os/exec"
 	"strings"
 )
+
+var (
+	DefaultUserManager = UserManager{}
+	UserNotFoundError  = errors.New("target user not found")
+)
+
+type UserManager struct {
+	Users   []*SystemUser
+	Groups  []*SystemUserGroup
+	Shadows []*Shadow
+}
+
+func (m *UserManager) LoadUser() (err error) {
+	m.Users, err = GetSystemUserList()
+	if err != nil {
+		return err
+	}
+	m.Groups, err = GetSystemUserGroupList()
+	if err != nil {
+		return err
+	}
+	m.Shadows, err = GetUserShadowList()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (m *UserManager) GetUserByName(username string) *SystemUser {
+	for _, systemUser := range m.Users {
+		if systemUser.Username == username {
+			return systemUser
+		}
+	}
+	return nil
+}
+func (m *UserManager) GetShadowByName(username string) *Shadow {
+	for _, shadow := range m.Shadows {
+		if shadow.Username == username {
+			return shadow
+		}
+	}
+	return nil
+}
+
+func (m *UserManager) GetGroupByName(name string) *SystemUserGroup {
+	for _, group := range m.Groups {
+		if group.Name == name {
+			return group
+		}
+	}
+	return nil
+}
+
+func (m *UserManager) CheckPassword(username string, password string) (validate bool) {
+	user := m.GetShadowByName(username)
+	if user == nil {
+		return false
+	}
+	return user.CheckPassword(password)
+}
+
+func (m *UserManager) CreateGroup(name string) error {
+	cmd := exec.Command("groupadd", "-f", name)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	err = m.LoadUser()
+	if err != nil {
+		return err
+	}
+	return err
+}
 
 type SystemUser struct {
 	Username      string `json:"username,omitempty"`
@@ -77,7 +151,7 @@ func (s *Shadow) CheckPassword(password string) bool {
 	return ok
 }
 
-func NewUser(username string, password string) error {
+func (m *UserManager) NewUser(username string, password string, only bool) error {
 	cmd := exec.Command("useradd", username)
 	err := cmd.Run()
 	if err != nil {
@@ -89,12 +163,19 @@ func NewUser(username string, password string) error {
 		return err
 	}
 	// add smb user
-	err = yousmb.AddUser(username, password)
-	if err != nil {
-		return err
+	if !only {
+		err = yousmb.AddUser(username, password)
+		if err != nil {
+			return err
+		}
 	}
 	config.Config.Users = append(config.Config.Users, username)
 	err = config.Config.UpdateConfig()
+	if err != nil {
+		return err
+	}
+
+	err = m.LoadUser()
 	if err != nil {
 		return err
 	}
@@ -118,4 +199,48 @@ func GetUserList() ([]string, error) {
 		return i.(*SystemUser).Username
 	}).ToSlice(&result)
 	return result, nil
+}
+
+type SystemUserGroup struct {
+	Name  string
+	Gid   string
+	Users []string
+}
+
+func GetSystemUserGroupList() ([]*SystemUserGroup, error) {
+	userGroupFile, err := os.Open("/etc/group")
+	if err != nil {
+		return nil, err
+	}
+	defer userGroupFile.Close()
+	result := make([]*SystemUserGroup, 0)
+	scanner := bufio.NewScanner(userGroupFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, ":")
+		group := &SystemUserGroup{
+			Name: parts[0],
+			Gid:  parts[2],
+		}
+		group.Users = strings.Split(parts[3], ",")
+		result = append(result, group)
+	}
+	return result, nil
+}
+func (g *SystemUserGroup) AddUser(user *SystemUser) error {
+	cmd := exec.Command("usermod", "-a", "-G", g.Name, user.Username)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (g *SystemUserGroup) HasUser(username string) bool {
+	for _, user := range g.Users {
+		if user == username {
+			return true
+		}
+	}
+	return false
 }
