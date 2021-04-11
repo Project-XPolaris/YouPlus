@@ -42,3 +42,15 @@ func (t *StorageTemplate) Assign(storage service.Storage) {
 		t.Type = "ZFSPool"
 	}
 }
+
+type ShareFolderUsers struct {
+	Uid  string `json:"uid"`
+	Name string `json:"name"`
+}
+type ShareFolderTemplate struct {
+	Name           string             `json:"name"`
+	Storage        StorageTemplate    `json:"storage,omitempty"`
+	ValidateUsers  []ShareFolderUsers `json:"validateUsers,omitempty"`
+	WriteableUsers []ShareFolderUsers `json:"writeableUsers,omitempty"`
+	Public         string             `json:"public"`
+}

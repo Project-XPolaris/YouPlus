@@ -86,6 +86,22 @@ func (m *UserManager) CreateGroup(name string) error {
 	return err
 }
 
+func (m *UserManager) ChangeUserPassword(username string, password string) error {
+	user := m.GetUserByName(username)
+	if user == nil {
+		return UserNotFoundError
+	}
+	err := user.ChangePassword(password)
+	if err != nil {
+		return err
+	}
+	err = m.LoadUser()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 type SystemUser struct {
 	Username      string `json:"username,omitempty"`
 	Password      string `json:"password,omitempty"`
@@ -118,6 +134,14 @@ func GetSystemUserList() ([]*SystemUser, error) {
 		})
 	}
 	return result, nil
+}
+
+func (u *SystemUser) ChangePassword(NewPassword string) error {
+	err := utils.ChangePassword(u.Username, NewPassword)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type Shadow struct {

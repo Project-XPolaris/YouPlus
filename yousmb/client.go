@@ -1,6 +1,7 @@
 package yousmb
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/projectxpolaris/youplus/utils"
@@ -51,4 +52,25 @@ func AddUser(username string, password string) error {
 		return err
 	}
 	return nil
+}
+
+type SMBSection struct {
+	Name   string            `json:"name"`
+	Fields map[string]string `json:"fields"`
+}
+type SMBConfigResponse struct {
+	Sections []SMBSection `json:"sections"`
+}
+
+func GetConfig() (*SMBConfigResponse, error) {
+	response, err := utils.POSTRequestWithJSON(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/config"), map[string]interface{}{})
+	if err != nil {
+		return nil, err
+	}
+	var body SMBConfigResponse
+	err = json.NewDecoder(response.Body).Decode(&body)
+	if err != nil {
+		return nil, err
+	}
+	return &body, nil
 }

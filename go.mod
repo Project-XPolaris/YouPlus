@@ -15,6 +15,7 @@ require (
 	github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
+	github.com/elastic/go-sysinfo v1.6.0
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/jessevdk/go-flags v1.4.0
@@ -29,7 +30,8 @@ require (
 	github.com/rs/xid v1.2.1
 	github.com/shirou/gopsutil v3.21.1+incompatible
 	github.com/sirupsen/logrus v1.8.1
-	golang.org/x/sys v0.0.0-20210317225723-c4fcb01b228e // indirect
+	github.com/zcalusic/sysinfo v0.0.0-20210226105846-b810d137e525
+	golang.org/x/sys v0.0.0-20210402192133-700132347e07 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
 	google.golang.org/grpc v1.34.0 // indirect
 	gotest.tools/v3 v3.0.3 // indirect

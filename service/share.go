@@ -2,10 +2,13 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/utils"
 	"github.com/projectxpolaris/youplus/yousmb"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -54,4 +57,48 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 
 func GetShareFolders() ([]*config.ShareFolderConfig, error) {
 	return config.Config.Folders, nil
+}
+
+type UpdateShareFolderOption struct {
+	Name       string   `json:"name"`
+	ValidUsers []string `json:"validUsers"`
+	WriteList  []string `json:"writeList"`
+	Public     string   `json:"public"`
+}
+type SMBFolderRequestBody struct {
+	Name       string                 `json:"name"`
+	Properties map[string]interface{} `json:"properties"`
+}
+
+func UpdateSMBConfig(option *UpdateShareFolderOption) error {
+	requestBody := SMBFolderRequestBody{
+		Name:       option.Name,
+		Properties: map[string]interface{}{},
+	}
+
+	if option.ValidUsers != nil && len(option.ValidUsers) > 0 {
+		for _, validUser := range option.ValidUsers {
+			user := DefaultUserManager.GetUserByName(validUser)
+			if user == nil {
+				return errors.New("invalidate user")
+			}
+
+		}
+		requestBody.Properties["valid users"] = strings.Join(option.ValidUsers, ",")
+	}
+	if option.WriteList != nil && len(option.WriteList) > 0 {
+		for _, writeUser := range option.WriteList {
+			user := DefaultUserManager.GetUserByName(writeUser)
+			if user == nil {
+				return errors.New("invalidate user")
+			}
+
+		}
+		requestBody.Properties["write list"] = strings.Join(option.WriteList, ",")
+	}
+	if len(option.Public) > 0 {
+		requestBody.Properties["public"] = option.Public
+	}
+	_, err := utils.POSTRequestWithJSON(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/folders/update"), requestBody)
+	return err
 }

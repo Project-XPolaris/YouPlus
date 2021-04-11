@@ -1,7 +1,6 @@
 package application
 
 import (
-	"fmt"
 	"github.com/allentom/haruka"
 	"github.com/projectxpolaris/youplus/service"
 	"net/http"
@@ -132,23 +131,6 @@ var removeAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 	})
 }
 
-var createShareHandler haruka.RequestHandler = func(context *haruka.Context) {
-	var requestBody service.NewShareFolderOption
-	err := context.ParseJson(&requestBody)
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusBadRequest)
-		return
-	}
-	err = service.CreateNewShareFolder(&requestBody)
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"success": true,
-	})
-}
-
 var getDiskListHandler haruka.RequestHandler = func(context *haruka.Context) {
 	disks := service.ReadDiskList()
 	context.JSON(haruka.JSON{
@@ -186,17 +168,6 @@ var getUserList haruka.RequestHandler = func(context *haruka.Context) {
 	}
 	context.JSON(haruka.JSON{
 		"users": userList,
-	})
-}
-
-var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
-	folderList, err := service.GetShareFolders()
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"folders": folderList,
 	})
 }
 
@@ -244,53 +215,6 @@ var removeStorage haruka.RequestHandler = func(context *haruka.Context) {
 	err = service.DefaultStoragePool.RemoveStorage(id)
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"success": true,
-	})
-}
-
-type CreateZFSPoolRequestBody struct {
-	Name  string   `json:"name"`
-	Disks []string `json:"disks"`
-}
-
-var createZFSPoolHandler haruka.RequestHandler = func(context *haruka.Context) {
-	var body CreateZFSPoolRequestBody
-	err := context.ParseJson(&body)
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusBadRequest)
-		return
-	}
-	err = service.DefaultZFSManager.CreatePool(body.Name, body.Disks...)
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"success": true,
-	})
-}
-
-var getZFSPoolListHandler haruka.RequestHandler = func(context *haruka.Context) {
-	data := make([]*ZFSPoolTemplate, 0)
-	for _, pool := range service.DefaultZFSManager.Pools {
-		template := &ZFSPoolTemplate{}
-		template.Assign(pool)
-		data = append(data, template)
-	}
-	context.JSON(haruka.JSON{
-		"pools": data,
-	})
-}
-
-var removePoolHandler haruka.RequestHandler = func(context *haruka.Context) {
-	name := context.GetQueryString("name")
-	fmt.Println(name)
-	err := service.DefaultZFSManager.RemovePool(name)
-	if err != nil {
-		AbortErrorWithStatus(err, context, 500)
 		return
 	}
 	context.JSON(haruka.JSON{

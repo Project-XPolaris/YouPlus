@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/amoghe/go-crypt"
 	"os/exec"
 )
@@ -26,5 +27,13 @@ func GeneratePassword(password string) (string, error) {
 		return "", err
 	}
 	return string(output), err
+}
 
+func ChangePassword(username string, password string) error {
+	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("echo %s:%s | chpasswd", username, password))
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
 }

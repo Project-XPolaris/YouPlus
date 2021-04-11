@@ -22,6 +22,7 @@ func RunApplication() {
 	e.Router.GET("/disks", getDiskListHandler)
 	e.Router.POST("/share", createShareHandler)
 	e.Router.GET("/share", getShareFolderList)
+	e.Router.POST("/share/update", updateShareFolder)
 	e.Router.POST("/users", createUserHandler)
 	e.Router.GET("/users", getUserList)
 	e.Router.POST("/storage", newStorage)
@@ -32,6 +33,8 @@ func RunApplication() {
 	e.Router.DELETE("/zpool", removePoolHandler)
 	e.Router.POST("/user/auth", userLoginHandler)
 	e.Router.GET("/user/auth", checkTokenHandler)
+	e.Router.POST("/account/password", changeAccountPasswordHandler)
+	e.Router.GET("/system/info", getSystemInfoHandler)
 	e.UseCors(cors.AllowAll())
 	e.UseMiddleware(middleware.NewJWTMiddleware(&middleware.NewJWTMiddlewareOption{
 		ReadTokenString: func(ctx *haruka.Context) string {
