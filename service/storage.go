@@ -1,18 +1,15 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
 
-var saveName = "./storage.json"
 var StorageNotFoundError = errors.New("target storage not found")
 var DefaultStoragePool = StoragePool{[]Storage{}}
 var StoragePoolLogger = logrus.New().WithFields(logrus.Fields{
@@ -24,47 +21,34 @@ type StoragePool struct {
 }
 
 func (p *StoragePool) LoadStorage() error {
-	jsonFile, err := os.Open(saveName)
+	var diskPartStorage []*database.PartStorage
+	err := database.Instance.Find(&diskPartStorage).Error
 	if err != nil {
 		return err
 	}
-	defer jsonFile.Close()
-	raw, _ := ioutil.ReadAll(jsonFile)
-	var rawConfig []map[string]interface{}
-	err = json.Unmarshal(raw, &rawConfig)
-
-	for _, rawStorage := range rawConfig {
-		switch rawStorage["type"] {
-		case "DiskPart":
-			diskPartStorage := &DiskPartStorage{}
-			diskPartStorage.LoadFromSave(rawStorage)
-			p.Storages = append(p.Storages, diskPartStorage)
-		case "ZFSPool":
-			zfsStorage := &ZFSPoolStorage{}
-			zfsStorage.LoadFromSave(rawStorage)
-			p.Storages = append(p.Storages, zfsStorage)
-		}
-
+	for _, partStorage := range diskPartStorage {
+		diskPartStorage := &DiskPartStorage{}
+		diskPartStorage.LoadFromSave(partStorage)
+		p.Storages = append(p.Storages, diskPartStorage)
+	}
+	var ZFSStorageList []*database.ZFSStorage
+	err = database.Instance.Find(&ZFSStorageList).Error
+	if err != nil {
+		return err
+	}
+	for _, zfsStorage := range ZFSStorageList {
+		s := &ZFSPoolStorage{}
+		s.LoadFromSave(zfsStorage)
+		p.Storages = append(p.Storages, s)
 	}
 	StoragePoolLogger.Info(fmt.Sprintf("success load %d storages", len(p.Storages)))
 	return nil
 }
 func (p *StoragePool) SaveStorage() error {
-	rawData := make([]map[string]interface{}, 0)
 	for _, storage := range p.Storages {
-		saveInfo := storage.SerializeSaveData()
-		switch storage.(type) {
-		case *DiskPartStorage:
-			saveInfo["type"] = "DiskPart"
-		case *ZFSPoolStorage:
-			saveInfo["type"] = "ZFSPool"
-		}
-		rawData = append(rawData, saveInfo)
+		storage.SaveData()
 	}
-
-	file, _ := json.MarshalIndent(rawData, "", "  ")
-	err := ioutil.WriteFile(saveName, file, 0644)
-	return err
+	return nil
 }
 
 func (p *StoragePool) NewStorage(source string, storageType string) error {
@@ -76,7 +60,10 @@ func (p *StoragePool) NewStorage(source string, storageType string) error {
 		p.Storages = append(p.Storages, storage)
 	}
 	if storageType == "ZFSPool" {
-		storage := CreateZFSStorage(source)
+		storage, err := CreateZFSStorage(source)
+		if err != nil {
+			return err
+		}
 		p.Storages = append(p.Storages, storage)
 	}
 	err := p.SaveStorage()
@@ -125,8 +112,7 @@ func (p *StoragePool) GetStorageById(id string) Storage {
 type Storage interface {
 	GetId() string
 	Remove() error
-	SerializeSaveData() map[string]interface{}
-	LoadFromSave(raw map[string]interface{})
+	SaveData() error
 	GetRootPath() string
 }
 
@@ -140,18 +126,17 @@ func (s *DiskPartStorage) GetRootPath() string {
 	return s.MountPoint
 }
 
-func (s *DiskPartStorage) LoadFromSave(raw map[string]interface{}) {
-	s.Id = raw["id"].(string)
-	s.Source = raw["source"].(string)
-	s.MountPoint = raw["mountPoint"].(string)
+func (s *DiskPartStorage) LoadFromSave(data *database.PartStorage) {
+	s.Id = data.ID
+	s.Source = data.Source
+	s.MountPoint = data.MountPoint
 }
 
-func (s *DiskPartStorage) SerializeSaveData() map[string]interface{} {
+func (s *DiskPartStorage) SaveData() error {
 	rawData := map[string]interface{}{}
-	rawData["id"] = s.Id
 	rawData["source"] = s.Source
 	rawData["mountPoint"] = s.MountPoint
-	return rawData
+	return database.Instance.Model(&database.PartStorage{}).Where("id = ?", s.Id).Updates(rawData).Error
 }
 
 func (s *DiskPartStorage) GetId() string {
@@ -185,7 +170,7 @@ func NewDiskPartStorage(source string) (Storage, error) {
 	storage := &DiskPartStorage{
 		Id:         id,
 		Source:     source,
-		MountPoint: "/" + fmt.Sprintf(filepath.Join("mnt", id)),
+		MountPoint: fmt.Sprintf(filepath.Join("mnt", id)),
 	}
 
 	//read fstype
@@ -219,12 +204,13 @@ func NewDiskPartStorage(source string) (Storage, error) {
 	}
 
 	//save
-	config.Config.Storage = append(config.Config.Storage, &config.StorageConfig{
-		Id:         storage.Id,
-		Source:     storage.Source,
-		MountPoint: storage.MountPoint,
-	})
-	err = config.Config.UpdateConfig()
+	err = database.Instance.Save(&database.PartStorage{
+		ID:           id,
+		MountPoint:   storage.MountPoint,
+		Name:         filepath.Base(storage.MountPoint),
+		Source:       storage.Source,
+		ShareFolders: nil,
+	}).Error
 	if err != nil {
 		return nil, err
 	}

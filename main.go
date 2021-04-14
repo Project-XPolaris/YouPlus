@@ -7,7 +7,9 @@ import (
 	srv "github.com/kardianos/service"
 	"github.com/projectxpolaris/youplus/application"
 	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
+	"github.com/projectxpolaris/youplus/yousmb"
 	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
@@ -24,33 +26,61 @@ func initService(workDir string) error {
 	return nil
 }
 func Program() {
+	logger := logrus.WithFields(logrus.Fields{
+		"scope": "boot",
+	})
 	// config
+	logger.Info("load config")
 	err := config.LoadAppConfig()
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatal(err)
 	}
+	err = database.ConnectToDatabase()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	logger.Info("load user")
 	err = service.DefaultUserManager.LoadUser()
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatal(err)
 	}
 	// docker client
+	logger.Info("load docker")
 	err = service.InitDockerClient()
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatal(err)
 	}
+	logger.Info("load fstab")
 	err = service.LoadFstab()
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatal(err)
 	}
+	logger.Info("load zfs")
 	err = service.DefaultZFSManager.LoadZFS()
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatal(err)
 	}
+	logger.Info("load storage")
 	err = service.DefaultStoragePool.LoadStorage()
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatal(err)
 	}
-	service.LoadApps()
+	logger.Info("load apps")
+	err = service.LoadApps()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	// checking smb service
+	logger.Info("check smb service")
+	info, err := yousmb.DefaultClient.GetInfo()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	if info.Status == "running" {
+		logger.Info("SMB service check [pass]")
+	} else {
+		logger.Fatal(errors.New("SMB service check [not pass]"))
+	}
 	application.RunApplication()
 }
 

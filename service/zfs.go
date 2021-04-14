@@ -2,9 +2,10 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"github.com/mistifyio/go-zfs"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/rs/xid"
+	"path"
 )
 
 var DefaultZFSManager = ZFSManager{}
@@ -62,6 +63,13 @@ type ZFSPoolStorage struct {
 	MountPoint string `json:"mount_point"`
 }
 
+func (z *ZFSPoolStorage) SaveData() error {
+	rawData := map[string]interface{}{}
+	rawData["Name"] = z.Name
+	rawData["MountPoint"] = z.MountPoint
+	return database.Instance.Model(&database.ZFSStorage{}).Where("id = ?", z.Id).Updates(rawData).Error
+}
+
 func (z *ZFSPoolStorage) GetRootPath() string {
 	return z.MountPoint
 }
@@ -71,28 +79,24 @@ func (z *ZFSPoolStorage) GetId() string {
 }
 
 func (z *ZFSPoolStorage) Remove() error {
-	// noting
-	return nil
+	return database.Instance.Model(&database.ZFSStorage{}).Unscoped().Delete(&database.ZFSStorage{ID: z.Id}).Error
 }
 
-func (z *ZFSPoolStorage) SerializeSaveData() map[string]interface{} {
-	rawData := map[string]interface{}{}
-	rawData["id"] = z.Id
-	rawData["name"] = z.Name
-	rawData["mountPoint"] = z.MountPoint
-	return rawData
+func (z *ZFSPoolStorage) LoadFromSave(data *database.ZFSStorage) {
+	z.Id = data.ID
+	z.Name = data.Name
+	z.MountPoint = data.MountPoint
 }
 
-func (z *ZFSPoolStorage) LoadFromSave(raw map[string]interface{}) {
-	z.Id = raw["id"].(string)
-	z.Name = raw["name"].(string)
-	z.MountPoint = raw["mountPoint"].(string)
-}
-
-func CreateZFSStorage(poolName string) Storage {
-	return &ZFSPoolStorage{
+func CreateZFSStorage(poolName string) (Storage, error) {
+	s := &ZFSPoolStorage{
 		Id:         xid.New().String(),
-		Name:       poolName,
-		MountPoint: fmt.Sprintf("/%s", poolName),
+		Name:       path.Base(poolName),
+		MountPoint: poolName,
 	}
+	err := database.Instance.Save(&database.ZFSStorage{ID: s.Id, Name: s.Name, MountPoint: s.MountPoint}).Error
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }

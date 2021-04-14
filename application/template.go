@@ -48,9 +48,12 @@ type ShareFolderUsers struct {
 	Name string `json:"name"`
 }
 type ShareFolderTemplate struct {
+	Id             uint               `json:"id"`
 	Name           string             `json:"name"`
 	Storage        StorageTemplate    `json:"storage,omitempty"`
 	ValidateUsers  []ShareFolderUsers `json:"validateUsers,omitempty"`
 	WriteableUsers []ShareFolderUsers `json:"writeableUsers,omitempty"`
 	Public         string             `json:"public"`
+	Readonly       string             `json:"readonly"`
+	Writable       string             `json:"writable"`
 }

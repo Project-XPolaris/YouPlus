@@ -1,13 +1,20 @@
 package yousmb
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/projectxpolaris/youplus/config"
-	"github.com/projectxpolaris/youplus/utils"
 	"strings"
 )
 
+var DefaultClient *Client
+
+func init() {
+	DefaultClient = &Client{}
+}
+
+type Client struct {
+}
 type CreateShareOption struct {
 	Name       string
 	Path       string
@@ -16,7 +23,7 @@ type CreateShareOption struct {
 	WriteList  []string
 }
 
-func CreateNewShare(option *CreateShareOption) error {
+func (c *Client) CreateNewShare(option *CreateShareOption) error {
 	properties := map[string]interface{}{
 		"path":           option.Path,
 		"browseable":     "yes",
@@ -35,19 +42,38 @@ func CreateNewShare(option *CreateShareOption) error {
 		"name":       option.Name,
 		"properties": properties,
 	}
-	_, err := utils.POSTRequestWithJSON(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/folders/add"), requestBody)
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(requestBody).
+		Post(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/folders/add"))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (c *Client) AddUser(username string, password string) error {
+	requestBody := map[string]interface{}{
+		"username": username,
+		"password": password,
+	}
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(requestBody).
+		Post(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/users"))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func AddUser(username string, password string) error {
-	requestBody := map[string]interface{}{
-		"username": username,
-		"password": password,
-	}
-	_, err := utils.POSTRequestWithJSON(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/users"), requestBody)
+func (c *Client) RemoveUser(username string) error {
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetQueryParam("username", username).
+		Delete(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/users"))
 	if err != nil {
 		return err
 	}
@@ -62,15 +88,45 @@ type SMBConfigResponse struct {
 	Sections []SMBSection `json:"sections"`
 }
 
-func GetConfig() (*SMBConfigResponse, error) {
-	response, err := utils.POSTRequestWithJSON(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/config"), map[string]interface{}{})
-	if err != nil {
-		return nil, err
-	}
+func (c *Client) GetConfig() (*SMBConfigResponse, error) {
 	var body SMBConfigResponse
-	err = json.NewDecoder(response.Body).Decode(&body)
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetResult(&body).
+		Get(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/config"))
 	if err != nil {
 		return nil, err
 	}
-	return &body, nil
+	return &body, err
+}
+
+type Info struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
+func (c *Client) GetInfo() (*Info, error) {
+	var body Info
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetResult(&body).
+		Get(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/info"))
+	if err != nil {
+		return nil, err
+	}
+	return &body, err
+}
+
+func (c *Client) RemoveFolder(name string) error {
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetQueryParam("name", name).
+		Get(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/folders/remove"))
+	if err != nil {
+		return err
+	}
+	return err
 }

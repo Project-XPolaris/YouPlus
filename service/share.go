@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/utils"
 	"github.com/projectxpolaris/youplus/yousmb"
+	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,7 +36,7 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 	if err != nil {
 		return err
 	}
-	err = yousmb.CreateNewShare(&yousmb.CreateShareOption{
+	err = yousmb.DefaultClient.CreateNewShare(&yousmb.CreateShareOption{
 		Name:       option.Name,
 		Path:       shareFolderPath,
 		Public:     option.Public,
@@ -44,19 +46,29 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 	if err != nil {
 		return err
 	}
-	config.Config.Folders = append(config.Config.Folders, &config.ShareFolderConfig{
-		StorageId: option.StorageId,
-		Part:      option.Name,
-	})
-	err = config.Config.UpdateConfig()
+	shareFolder := database.ShareFolder{
+		Name: option.Name,
+	}
+	switch storage.(type) {
+	case *ZFSPoolStorage:
+		shareFolder.ZFSStorageId = storage.GetId()
+	case *DiskPartStorage:
+		shareFolder.PartStorageId = storage.GetId()
+	}
+	err = database.Instance.Save(&shareFolder).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetShareFolders() ([]*config.ShareFolderConfig, error) {
-	return config.Config.Folders, nil
+func GetShareFolders() ([]*database.ShareFolder, error) {
+	var folders []*database.ShareFolder
+	err := database.Instance.Find(&folders).Error
+	if err != nil {
+		return nil, err
+	}
+	return folders, nil
 }
 
 type UpdateShareFolderOption struct {
@@ -64,6 +76,8 @@ type UpdateShareFolderOption struct {
 	ValidUsers []string `json:"validUsers"`
 	WriteList  []string `json:"writeList"`
 	Public     string   `json:"public"`
+	Readonly   string   `json:"readonly"`
+	Writable   string   `json:"writable"`
 }
 type SMBFolderRequestBody struct {
 	Name       string                 `json:"name"`
@@ -99,6 +113,34 @@ func UpdateSMBConfig(option *UpdateShareFolderOption) error {
 	if len(option.Public) > 0 {
 		requestBody.Properties["public"] = option.Public
 	}
+	if len(option.Readonly) > 0 {
+		requestBody.Properties["read only"] = option.Readonly
+	}
+	if len(option.Writable) > 0 {
+		requestBody.Properties["writable"] = option.Writable
+	}
 	_, err := utils.POSTRequestWithJSON(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/folders/update"), requestBody)
 	return err
+}
+
+func RemoveShare(id uint) error {
+	shareFolder := database.ShareFolder{
+		Model: gorm.Model{ID: id},
+	}
+	err := database.Instance.Find(&shareFolder).Error
+	if err != nil {
+		return err
+	}
+	err = yousmb.DefaultClient.RemoveFolder(shareFolder.Name)
+	if err != nil {
+		return err
+	}
+	err = database.Instance.Model(&database.ShareFolder{}).
+		Unscoped().
+		Delete(&database.ShareFolder{Model: gorm.Model{ID: shareFolder.ID}}).
+		Error
+	if err != nil {
+		return err
+	}
+	return nil
 }

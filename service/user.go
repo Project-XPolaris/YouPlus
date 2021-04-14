@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	. "github.com/ahmetb/go-linq/v3"
-	"github.com/projectxpolaris/youplus/config"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/utils"
 	"github.com/projectxpolaris/youplus/yousmb"
 	"os"
@@ -188,17 +188,17 @@ func (m *UserManager) NewUser(username string, password string, only bool) error
 	}
 	// add smb user
 	if !only {
-		err = yousmb.AddUser(username, password)
+		err = yousmb.DefaultClient.AddUser(username, password)
 		if err != nil {
 			return err
 		}
 	}
-	config.Config.Users = append(config.Config.Users, username)
-	err = config.Config.UpdateConfig()
+	err = database.Instance.Save(&database.User{
+		Username: username,
+	}).Error
 	if err != nil {
 		return err
 	}
-
 	err = m.LoadUser()
 	if err != nil {
 		return err
@@ -206,15 +206,42 @@ func (m *UserManager) NewUser(username string, password string, only bool) error
 	return nil
 }
 
+func (m *UserManager) RemoveUser(username string) error {
+	cmd := exec.Command("userdel", username)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	// add smb user
+	err = yousmb.DefaultClient.RemoveUser(username)
+	if err != nil {
+		return err
+	}
+
+	err = database.Instance.Unscoped().Where("username = ?", username).Delete(&database.User{Username: username}).Error
+	if err != nil {
+		return err
+	}
+	err = m.LoadUser()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func GetUserList() ([]string, error) {
 	users, err := GetSystemUserList()
 	if err != nil {
 		return nil, err
 	}
 	result := make([]string, 0)
+	var saveUsers []database.User
+	err = database.Instance.Find(&saveUsers).Error
+	if err != nil {
+		return nil, err
+	}
 	From(users).Where(func(i interface{}) bool {
-		for _, user := range config.Config.Users {
-			if i.(*SystemUser).Username == user {
+		for _, user := range saveUsers {
+			if i.(*SystemUser).Username == user.Username {
 				return true
 			}
 		}
@@ -259,7 +286,14 @@ func (g *SystemUserGroup) AddUser(user *SystemUser) error {
 	}
 	return nil
 }
-
+func (g *SystemUserGroup) DelUser(user *SystemUser) error {
+	cmd := exec.Command("userdel", user.Username)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func (g *SystemUserGroup) HasUser(username string) bool {
 	for _, user := range g.Users {
 		if user == username {

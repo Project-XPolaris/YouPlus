@@ -31,7 +31,7 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
-	smbConfig, err := yousmb.GetConfig()
+	smbConfig, err := yousmb.DefaultClient.GetConfig()
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
@@ -39,9 +39,17 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 	shareFolders := make([]ShareFolderTemplate, 0)
 	for _, shareFolderConfig := range folderList {
 		template := ShareFolderTemplate{
-			Name: shareFolderConfig.Part,
+			Id:   shareFolderConfig.ID,
+			Name: shareFolderConfig.Name,
 		}
-		storage := service.DefaultStoragePool.GetStorageById(shareFolderConfig.StorageId)
+		sid := ""
+		if len(shareFolderConfig.PartStorageId) != 0 {
+			sid = shareFolderConfig.PartStorageId
+		}
+		if len(shareFolderConfig.ZFSStorageId) != 0 {
+			sid = shareFolderConfig.ZFSStorageId
+		}
+		storage := service.DefaultStoragePool.GetStorageById(sid)
 		if storage == nil {
 			continue
 		}
@@ -51,7 +59,7 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 		// get config
 		var targetSection *yousmb.SMBSection
 		for _, section := range smbConfig.Sections {
-			if section.Name == shareFolderConfig.Part {
+			if section.Name == shareFolderConfig.Name {
 				targetSection = &section
 				break
 			}
@@ -97,6 +105,16 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 		} else {
 			template.Public = "Not set"
 		}
+		if readonly, exist := targetSection.Fields["read only"]; exist {
+			template.Readonly = readonly
+		} else {
+			template.Readonly = "Not set"
+		}
+		if writable, exist := targetSection.Fields["writable"]; exist {
+			template.Writable = writable
+		} else {
+			template.Writable = "Not set"
+		}
 		shareFolders = append(shareFolders, template)
 	}
 	context.JSON(haruka.JSON{
@@ -112,6 +130,22 @@ var updateShareFolder haruka.RequestHandler = func(context *haruka.Context) {
 		return
 	}
 	err = service.UpdateSMBConfig(&requestBody)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
+
+var removeShareHandler haruka.RequestHandler = func(context *haruka.Context) {
+	id, err := context.GetQueryInt("id")
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.RemoveShare(uint(id))
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return

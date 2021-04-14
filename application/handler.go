@@ -138,39 +138,6 @@ var getDiskListHandler haruka.RequestHandler = func(context *haruka.Context) {
 	})
 }
 
-type CreateUserRequestBody struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-var createUserHandler haruka.RequestHandler = func(context *haruka.Context) {
-	var body CreateUserRequestBody
-	err := context.ParseJson(&body)
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusBadRequest)
-		return
-	}
-	err = service.DefaultUserManager.NewUser(body.Username, body.Password, false)
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"success": true,
-	})
-}
-
-var getUserList haruka.RequestHandler = func(context *haruka.Context) {
-	userList, err := service.GetUserList()
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"users": userList,
-	})
-}
-
 type NewStorageRequest struct {
 	Source string `json:"source"`
 	Type   string `json:"type"`
@@ -207,12 +174,7 @@ var getStorageListHandler haruka.RequestHandler = func(context *haruka.Context) 
 
 var removeStorage haruka.RequestHandler = func(context *haruka.Context) {
 	id := context.GetQueryString("id")
-	err := service.DefaultAppManager.StopApp(id)
-	if err != nil {
-		AbortErrorWithStatus(err, context, 500)
-		return
-	}
-	err = service.DefaultStoragePool.RemoveStorage(id)
+	err := service.DefaultStoragePool.RemoveStorage(id)
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return

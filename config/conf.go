@@ -12,19 +12,12 @@ type ShareFolderConfig struct {
 	StorageId string `json:"storageId"`
 	Part      string `json:"part"`
 }
-type StorageConfig struct {
-	Id         string `json:"id"`
-	Source     string `json:"source"`
-	MountPoint string `json:"mount_point"`
-}
+
 type AppConfig struct {
-	Addr       string               `json:"addr"`
-	ApiKey     string               `json:"api_key"`
-	YouSMBAddr string               `json:"yousmb_addr"`
-	Folders    []*ShareFolderConfig `json:"folders"`
-	Users      []string             `json:"users"`
-	Fstab      string               `json:"fstab"`
-	Storage    []*StorageConfig     `json:"storage"`
+	Addr       string `json:"addr"`
+	ApiKey     string `json:"api_key"`
+	YouSMBAddr string `json:"yousmb_addr"`
+	Fstab      string `json:"fstab"`
 }
 
 func LoadAppConfig() error {
