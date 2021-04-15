@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	"github.com/mistifyio/go-zfs"
+	libzfs "github.com/bicomsystems/go-libzfs"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/rs/xid"
 	"path"
@@ -12,45 +12,63 @@ var DefaultZFSManager = ZFSManager{}
 var PoolNotFoundError = errors.New("target pool not found")
 
 type ZFSManager struct {
-	Pools []*zfs.Zpool
-}
-
-func (m *ZFSManager) LoadZFS() (err error) {
-	m.Pools, err = zfs.ListZpools()
-	return
 }
 
 func (m *ZFSManager) CreatePool(name string, paths ...string) error {
-	_, err := zfs.CreateZpool(name, map[string]string{}, paths...)
+	var vdev libzfs.VDevTree
+	var mdevs []libzfs.VDevTree
+	// build mirror devices specs
+	for _, d := range paths {
+		mdevs = append(mdevs, libzfs.VDevTree{Type: libzfs.VDevTypeDisk, Path: d})
+	}
+	// spare device specs
+	// pool specs
+
+	vdev.Devices = mdevs
+	// pool properties
+	props := make(map[libzfs.Prop]string)
+
+	// root dataset filesystem properties
+	fsprops := make(map[libzfs.Prop]string)
+	//err := os.MkdirAll("/" + name,os.ModePerm)
+	//if err != nil {
+	//	return err
+	//}
+	fsprops[libzfs.DatasetPropMountpoint] = "/" + name
+	// pool features
+	features := make(map[string]string)
+	pool, err := libzfs.PoolCreate(name, vdev, features, props, fsprops)
 	if err != nil {
 		return err
 	}
-	// reload
-	err = m.LoadZFS()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (m *ZFSManager) GetPoolByName(name string) *zfs.Zpool {
-	for _, pool := range m.Pools {
-		if pool.Name == name {
-			return pool
+
+	pool.Close()
+	dss, err := libzfs.DatasetOpenAll()
+
+	for _, dataset := range dss {
+		if dataset.PoolName() == name {
+			dataset.Mount("", 0)
 		}
 	}
 	return nil
 }
+
 func (m *ZFSManager) RemovePool(name string) error {
-	pool := m.GetPoolByName(name)
-	if pool == nil {
-		return PoolNotFoundError
-	}
-	err := pool.Destroy()
+	pool, err := libzfs.PoolOpen(name)
 	if err != nil {
 		return err
 	}
-	// reload
-	err = m.LoadZFS()
+	ds, err := libzfs.DatasetOpen(name)
+	if err != nil {
+		return err
+	}
+	err = ds.Unmount(0)
+	if err != nil {
+		return err
+	}
+	defer ds.Close()
+	defer pool.Close()
+	err = pool.Destroy(name)
 	if err != nil {
 		return err
 	}

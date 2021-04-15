@@ -1,8 +1,8 @@
 package application
 
 import (
-	"fmt"
 	"github.com/allentom/haruka"
+	libzfs "github.com/bicomsystems/go-libzfs"
 	"github.com/projectxpolaris/youplus/service"
 	"net/http"
 )
@@ -31,11 +31,19 @@ var createZFSPoolHandler haruka.RequestHandler = func(context *haruka.Context) {
 
 var getZFSPoolListHandler haruka.RequestHandler = func(context *haruka.Context) {
 	data := make([]*ZFSPoolTemplate, 0)
-	for _, pool := range service.DefaultZFSManager.Pools {
+	pools, err := libzfs.PoolOpenAll()
+	if err != nil {
+		context.JSON(haruka.JSON{
+			"pools": []string{},
+		})
+		return
+	}
+	for _, pool := range pools {
 		template := &ZFSPoolTemplate{}
 		template.Assign(pool)
 		data = append(data, template)
 	}
+	libzfs.PoolCloseAll(pools)
 	context.JSON(haruka.JSON{
 		"pools": data,
 	})
@@ -43,7 +51,6 @@ var getZFSPoolListHandler haruka.RequestHandler = func(context *haruka.Context) 
 
 var removePoolHandler haruka.RequestHandler = func(context *haruka.Context) {
 	name := context.GetQueryString("name")
-	fmt.Println(name)
 	err := service.DefaultZFSManager.RemovePool(name)
 	if err != nil {
 		AbortErrorWithStatus(err, context, 500)

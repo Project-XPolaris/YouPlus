@@ -2,8 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
-	"github.com/jessevdk/go-flags"
 	srv "github.com/kardianos/service"
 	"github.com/projectxpolaris/youplus/application"
 	"github.com/projectxpolaris/youplus/config"
@@ -11,6 +9,8 @@ import (
 	"github.com/projectxpolaris/youplus/service"
 	"github.com/projectxpolaris/youplus/yousmb"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -52,11 +52,6 @@ func Program() {
 	}
 	logger.Info("load fstab")
 	err = service.LoadFstab()
-	if err != nil {
-		logger.Fatal(err)
-	}
-	logger.Info("load zfs")
-	err = service.DefaultZFSManager.LoadZFS()
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -123,8 +118,40 @@ func UnInstall() {
 	}
 	logrus.Info("successful uninstall service")
 }
-
-func CreateAdmin() {
+func StartService() {
+	prg := &program{}
+	s, err := srv.New(prg, svcConfig)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = s.Start()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+}
+func StopService() {
+	prg := &program{}
+	s, err := srv.New(prg, svcConfig)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = s.Stop()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+}
+func RestartService() {
+	prg := &program{}
+	s, err := srv.New(prg, svcConfig)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = s.Restart()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+}
+func CreateAdmin(name string, password string, only bool) {
 	err := config.LoadAppConfig()
 	if err != nil {
 		logrus.Fatal(err)
@@ -143,11 +170,11 @@ func CreateAdmin() {
 		logrus.Fatal(errors.New("create group failed"))
 	}
 	logrus.Info("create user")
-	err = service.DefaultUserManager.NewUser(opts.Username, opts.Password, opts.OnlyAdmin)
+	err = service.DefaultUserManager.NewUser(name, password, only)
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	user := service.DefaultUserManager.GetUserByName(opts.Username)
+	user := service.DefaultUserManager.GetUserByName(name)
 	if user == nil {
 		logrus.Fatal(errors.New("create user failed"))
 	}
@@ -159,22 +186,110 @@ func CreateAdmin() {
 	logrus.Info("add admin success")
 }
 
-var opts struct {
-	Install     bool   `short:"i" long:"install" description:"install service"`
-	Uninstall   bool   `short:"u" long:"uninstall" description:"uninstall service"`
-	CreateAdmin bool   `short:"c" long:"adminadd" description:"create new admin"`
-	Username    string `short:"n" long:"user" description:"username"`
-	Password    string `short:"p" long:"pwd" description:"password"`
-	OnlyAdmin   bool   `long:"onlyadmin" description:"only create for youplus not create smb account"`
-}
-
-func main() {
-	// flags
-	_, err := flags.ParseArgs(&opts, os.Args)
-	if err != nil {
-		logrus.Fatal(err)
-		return
+func RunApp() {
+	app := &cli.App{
+		Flags: []cli.Flag{},
+		Commands: []*cli.Command{
+			&cli.Command{
+				Name:  "service",
+				Usage: "service manager",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "install",
+						Usage: "install service",
+						Action: func(context *cli.Context) error {
+							InstallAsService()
+							return nil
+						},
+					},
+					{
+						Name:  "uninstall",
+						Usage: "uninstall service",
+						Action: func(context *cli.Context) error {
+							UnInstall()
+							return nil
+						},
+					},
+					{
+						Name:  "start",
+						Usage: "start service",
+						Action: func(context *cli.Context) error {
+							StartService()
+							return nil
+						},
+					},
+					{
+						Name:  "stop",
+						Usage: "stop service",
+						Action: func(context *cli.Context) error {
+							StopService()
+							return nil
+						},
+					},
+					{
+						Name:  "restart",
+						Usage: "restart service",
+						Action: func(context *cli.Context) error {
+							RestartService()
+							return nil
+						},
+					},
+				},
+				Description: "YouPlus service controller",
+			},
+			{
+				Name:  "run",
+				Usage: "run app",
+				Action: func(context *cli.Context) error {
+					Program()
+					return nil
+				},
+			},
+			{
+				Name:  "user",
+				Usage: "user manager",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "adminadd",
+						Usage: "create admin user",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "name",
+								Usage:    "admin user name",
+								Aliases:  []string{"u"},
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "password",
+								Usage:    "admin password",
+								Aliases:  []string{"p"},
+								Required: true,
+							},
+							&cli.BoolFlag{
+								Name:  "only",
+								Usage: "create account without smb user",
+								Value: false,
+							},
+						},
+						Action: func(context *cli.Context) error {
+							err := database.ConnectToDatabase()
+							if err != nil {
+								return err
+							}
+							CreateAdmin(context.String("name"), context.String("password"), context.Bool("only"))
+							return nil
+						},
+					},
+				},
+			},
+		},
 	}
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+func main() {
 	// service
 	workPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
@@ -184,19 +299,5 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	logrus.Info(fmt.Sprintf("work_path =  %s", workPath))
-	if opts.Install {
-		InstallAsService()
-		return
-	}
-	if opts.Uninstall {
-		UnInstall()
-		return
-	}
-
-	if opts.CreateAdmin {
-		CreateAdmin()
-		return
-	}
-	Program()
+	RunApp()
 }

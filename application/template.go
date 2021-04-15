@@ -1,7 +1,7 @@
 package application
 
 import (
-	"github.com/mistifyio/go-zfs"
+	libzfs "github.com/bicomsystems/go-libzfs"
 	"github.com/projectxpolaris/youplus/service"
 )
 
@@ -21,11 +21,13 @@ type ZFSPoolTemplate struct {
 	Free      uint64 `json:"free,omitempty"`
 }
 
-func (t *ZFSPoolTemplate) Assign(zpool *zfs.Zpool) {
-	t.Name = zpool.Name
-	t.Allocated = zpool.Allocated
-	t.Size = zpool.Size
-	t.Free = zpool.Free
+func (t *ZFSPoolTemplate) Assign(pool libzfs.Pool) error {
+	name, err := pool.Name()
+	if err != nil {
+		return err
+	}
+	t.Name = name
+	return nil
 }
 
 type StorageTemplate struct {
