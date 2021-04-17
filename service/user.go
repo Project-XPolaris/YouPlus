@@ -47,6 +47,14 @@ func (m *UserManager) GetUserByName(username string) *SystemUser {
 	}
 	return nil
 }
+func (m *UserManager) GetUserGroupByName(name string) *SystemUserGroup {
+	for _, group := range m.Groups {
+		if group.Name == name {
+			return group
+		}
+	}
+	return nil
+}
 func (m *UserManager) GetShadowByName(username string) *Shadow {
 	for _, shadow := range m.Shadows {
 		if shadow.Username == username {
@@ -64,7 +72,22 @@ func (m *UserManager) GetGroupByName(name string) *SystemUserGroup {
 	}
 	return nil
 }
-
+func (m *UserManager) GetGroups() (groups []*SystemUserGroup, err error) {
+	saveGroups := make([]database.UserGroup, 0)
+	err = database.Instance.Find(&saveGroups).Error
+	if err != nil {
+		return nil, err
+	}
+	From(m.Groups).Where(func(sysGroup interface{}) bool {
+		for _, sa := range saveGroups {
+			if sa.Gid == sysGroup.(*SystemUserGroup).Gid {
+				return true
+			}
+		}
+		return false
+	}).ToSlice(&groups)
+	return
+}
 func (m *UserManager) CheckPassword(username string, password string) (validate bool) {
 	user := m.GetShadowByName(username)
 	if user == nil {
@@ -73,19 +96,43 @@ func (m *UserManager) CheckPassword(username string, password string) (validate 
 	return user.CheckPassword(password)
 }
 
-func (m *UserManager) CreateGroup(name string) error {
+func (m *UserManager) CreateGroup(name string) (*SystemUserGroup, error) {
 	cmd := exec.Command("groupadd", "-f", name)
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+	err = m.LoadUser()
+	if err != nil {
+		return nil, err
+	}
+	createdGroup := From(m.Groups).FirstWith(func(group interface{}) bool {
+		return group.(*SystemUserGroup).Name == name
+	}).(*SystemUserGroup)
+	err = database.Instance.Save(&database.UserGroup{
+		Gid: createdGroup.Gid,
+	}).Error
+	if err != nil {
+		return nil, err
+	}
+	return createdGroup, err
+}
+func (m *UserManager) RemoveUserGroup(name string) error {
+	group := m.GetGroupByName(name)
+	if group == nil {
+		return nil
+	}
+	cmd := exec.Command("groupdel", name)
 	err := cmd.Run()
 	if err != nil {
 		return err
 	}
-	err = m.LoadUser()
+	err = database.Instance.Model(&database.UserGroup{}).Unscoped().Where("gid = ?", group.Gid).Delete(&database.UserGroup{Gid: group.Gid}).Error
 	if err != nil {
 		return err
 	}
-	return err
+	return nil
 }
-
 func (m *UserManager) ChangeUserPassword(username string, password string) error {
 	user := m.GetUserByName(username)
 	if user == nil {
@@ -284,11 +331,19 @@ func (g *SystemUserGroup) AddUser(user *SystemUser) error {
 	if err != nil {
 		return err
 	}
+	err = DefaultUserManager.LoadUser()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 func (g *SystemUserGroup) DelUser(user *SystemUser) error {
-	cmd := exec.Command("userdel", user.Username)
+	cmd := exec.Command("gpasswd", "-d", user.Username, g.Name)
 	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	err = DefaultUserManager.LoadUser()
 	if err != nil {
 		return err
 	}

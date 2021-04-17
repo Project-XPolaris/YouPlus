@@ -27,7 +27,6 @@ func (m *ZFSManager) CreatePool(name string, paths ...string) error {
 	vdev.Devices = mdevs
 	// pool properties
 	props := make(map[libzfs.Prop]string)
-
 	// root dataset filesystem properties
 	fsprops := make(map[libzfs.Prop]string)
 	//err := os.MkdirAll("/" + name,os.ModePerm)
@@ -41,7 +40,6 @@ func (m *ZFSManager) CreatePool(name string, paths ...string) error {
 	if err != nil {
 		return err
 	}
-
 	pool.Close()
 	dss, err := libzfs.DatasetOpenAll()
 

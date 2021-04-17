@@ -11,18 +11,19 @@ var (
 	NeedCreateAdminError = errors.New("need create admin")
 	PermissionError      = errors.New("permission denied")
 	InvalidateUserError  = errors.New("invalidate user or password")
+	SuperuserGroup       = "youplusadmin"
 )
 
-func UserLogin(username string, password string) (string, error) {
+func UserLogin(username string, password string, admin bool) (string, error) {
 	user := DefaultUserManager.GetUserByName(username)
 	if user == nil {
 		return "", UserNotFoundError
 	}
-	group := DefaultUserManager.GetGroupByName("youplusadmin")
+	group := DefaultUserManager.GetGroupByName(SuperuserGroup)
 	if group == nil {
 		return "", NeedCreateAdminError
 	}
-	if !group.HasUser(username) {
+	if admin && !group.HasUser(username) {
 		return "", PermissionError
 	}
 	if !DefaultUserManager.CheckPassword(username, password) {

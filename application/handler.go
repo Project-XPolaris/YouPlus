@@ -184,43 +184,6 @@ var removeStorage haruka.RequestHandler = func(context *haruka.Context) {
 	})
 }
 
-type UserAuthRequestBody struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-var userLoginHandler haruka.RequestHandler = func(context *haruka.Context) {
-	var body UserAuthRequestBody
-	err := context.ParseJson(&body)
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusBadRequest)
-		return
-	}
-	tokenStr, err := service.UserLogin(body.Username, body.Password)
-	if err != nil {
-		AbortErrorWithStatus(err, context, 500)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"success": true,
-		"token":   tokenStr,
-	})
-}
-
-var checkTokenHandler haruka.RequestHandler = func(context *haruka.Context) {
-	rawToken := context.GetQueryString("token")
-	user, err := service.ParseUser(rawToken)
-	if err != nil {
-		AbortErrorWithStatus(err, context, 500)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"success":  true,
-		"username": user.Username,
-		"uid":      user.Uid,
-	})
-}
-
 var appIconHandler haruka.RequestHandler = func(context *haruka.Context) {
 	id := context.GetQueryString("id")
 	app := service.DefaultAppManager.GetAppByIdApp(id)

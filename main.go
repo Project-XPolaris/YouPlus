@@ -22,6 +22,7 @@ func initService(workDir string) error {
 		Name:             "YouPlusCoreService",
 		DisplayName:      "YouPlus Core Service",
 		WorkingDirectory: workDir,
+		Arguments:        []string{"run"},
 	}
 	return nil
 }
@@ -155,33 +156,45 @@ func CreateAdmin(name string, password string, only bool) {
 	err := config.LoadAppConfig()
 	if err != nil {
 		logrus.Fatal(err)
+		return
+	}
+	err = database.ConnectToDatabase()
+	if err != nil {
+		logrus.Fatal(err)
+		return
 	}
 	err = service.DefaultUserManager.LoadUser()
 	if err != nil {
 		logrus.Fatal(err)
+		return
 	}
 	logrus.Info("create user group")
-	err = service.DefaultUserManager.CreateGroup("youplusadmin")
+	_, err = service.DefaultUserManager.CreateGroup(service.SuperuserGroup)
 	if err != nil {
 		logrus.Fatal(err)
+		return
 	}
-	group := service.DefaultUserManager.GetGroupByName("youplusadmin")
+	group := service.DefaultUserManager.GetGroupByName(service.SuperuserGroup)
 	if group == nil {
 		logrus.Fatal(errors.New("create group failed"))
+		return
 	}
 	logrus.Info("create user")
 	err = service.DefaultUserManager.NewUser(name, password, only)
 	if err != nil {
 		logrus.Fatal(err)
+		return
 	}
 	user := service.DefaultUserManager.GetUserByName(name)
 	if user == nil {
 		logrus.Fatal(errors.New("create user failed"))
+		return
 	}
 	logrus.Info("init admin account")
 	err = group.AddUser(user)
 	if err != nil {
 		logrus.Fatal(err)
+		return
 	}
 	logrus.Info("add admin success")
 }

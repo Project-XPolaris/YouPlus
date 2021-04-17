@@ -59,3 +59,24 @@ type ShareFolderTemplate struct {
 	Readonly       string             `json:"readonly"`
 	Writable       string             `json:"writable"`
 }
+
+type UserTemplate struct {
+	Name string `json:"name"`
+	Uid  string `json:"uid"`
+}
+type UserGroupTemplate struct {
+	Name  string         `json:"name"`
+	Gid   string         `json:"gid"`
+	Type  string         `json:"type"`
+	Users []UserTemplate `json:"users,omitempty"`
+}
+
+func (t *UserGroupTemplate) Assign(group *service.SystemUserGroup) {
+	t.Name = group.Name
+	t.Gid = group.Gid
+	if group.Name == service.SuperuserGroup {
+		t.Type = "admin"
+	} else {
+		t.Type = "normal"
+	}
+}
