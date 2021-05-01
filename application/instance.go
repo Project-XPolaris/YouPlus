@@ -14,6 +14,8 @@ func RunApplication() {
 	e.Router.GET("/apps", appListHandler)
 	e.Router.POST("/apps", addAppHandler)
 	e.Router.DELETE("/apps", removeAppHandler)
+	e.Router.POST("/apps/upload", uploadAppHandler)
+	e.Router.POST("/apps/uninstall", uninstallAppHandler)
 	e.Router.GET("/app/icon", appIconHandler)
 	e.Router.POST("/app/run", startAppHandler)
 	e.Router.POST("/app/stop", appStopHandler)

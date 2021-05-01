@@ -22,6 +22,7 @@ require (
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/kardianos/service v1.2.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
+	github.com/mholt/archiver/v3 v3.5.0 // indirect
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
