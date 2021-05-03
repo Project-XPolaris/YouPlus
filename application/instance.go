@@ -46,6 +46,8 @@ func RunApplication() {
 	e.Router.POST("/group/{name}/users", addUserToUserGroupHandler)
 	e.Router.POST("/account/password", changeAccountPasswordHandler)
 	e.Router.GET("/system/info", getSystemInfoHandler)
+	e.Router.GET("/tasks", tasksListHandler)
+	e.Router.AddHandler("/notification", notificationSocketHandler)
 	e.UseCors(cors.AllowAll())
 	e.UseMiddleware(middleware.NewJWTMiddleware(&middleware.NewJWTMiddlewareOption{
 		ReadTokenString: func(ctx *haruka.Context) string {

@@ -241,6 +241,11 @@ type InstallAppTask struct {
 	Id           string
 	Status       string
 	ErrorMessage string
+	Extra        InstallAppExtra
+}
+
+type InstallAppExtra struct {
+	output string `json:"output"`
 }
 
 func (p *TaskPool) NewInstallAppTask(packagePath string) Task {
@@ -248,6 +253,9 @@ func (p *TaskPool) NewInstallAppTask(packagePath string) Task {
 	task := InstallAppTask{
 		Id:     id,
 		Status: TaskStatusRunning,
+		Extra: InstallAppExtra{
+			output: "",
+		},
 	}
 	go func() {
 		uList := &UList{}
@@ -284,16 +292,33 @@ func (p *TaskPool) NewInstallAppTask(packagePath string) Task {
 			logrus.Error(err)
 			return
 		}
-		cmd := exec.Command("/usr/bin/sh", uList.InstallScript)
+		parts := strings.Split(uList.InstallScript, " ")
+		name := parts[0]
+		args := make([]string, 0)
+		if len(parts) > 1 {
+			args = parts[1:]
+		}
+		cmd := exec.Command(name, args...)
 		cmd.Dir = workDir
-		out, err := cmd.Output()
+		go func() {
+			stdout, err := cmd.StdoutPipe()
+			if err != nil {
+				logrus.Error(err)
+				return
+			}
+			scanner := bufio.NewScanner(stdout)
+			for scanner.Scan() {
+				m := scanner.Text()
+				task.Extra.output = m
+			}
+		}()
+		err = cmd.Start()
 		if err != nil {
 			task.ErrorMessage = err.Error()
 			task.Status = TaskStatusError
 			logrus.Error(err)
 			return
 		}
-		logrus.Info(string(out))
 		err = DefaultAppManager.addApp(workDir)
 		if err != nil {
 			task.ErrorMessage = err.Error()
