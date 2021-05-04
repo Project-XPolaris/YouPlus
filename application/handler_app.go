@@ -160,7 +160,24 @@ var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
-	task := service.DefaultTaskPool.NewInstallAppTask(packagePath)
+	task := service.DefaultTaskPool.NewInstallAppTask(packagePath, service.InstallAppCallback{
+		OnDone: func(task *service.InstallAppTask) {
+			template := TaskTemplate{}
+			template.Assign(task)
+			DefaultNotificationManager.sendJSONToAll(haruka.JSON{
+				"event": InstallDoneEvent,
+				"data":  template,
+			})
+		},
+		OnError: func(task *service.InstallAppTask) {
+			template := TaskTemplate{}
+			template.Assign(task)
+			DefaultNotificationManager.sendJSONToAll(haruka.JSON{
+				"event": InstallErrorEvent,
+				"data":  template,
+			})
+		},
+	})
 	template := TaskTemplate{}
 	template.Assign(task)
 	context.JSON(template)
@@ -168,7 +185,24 @@ var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 
 var uninstallAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 	id := context.GetQueryString("id")
-	task := service.DefaultTaskPool.NewUnInstallAppTask(id)
+	task := service.DefaultTaskPool.NewUnInstallAppTask(id, service.UnInstallAppCallback{
+		OnDone: func(task *service.UnInstallAppTask) {
+			template := TaskTemplate{}
+			template.Assign(task)
+			DefaultNotificationManager.sendJSONToAll(haruka.JSON{
+				"event": UninstallDoneEvent,
+				"data":  template,
+			})
+		},
+		OnError: func(task *service.UnInstallAppTask) {
+			template := TaskTemplate{}
+			template.Assign(task)
+			DefaultNotificationManager.sendJSONToAll(haruka.JSON{
+				"event": UninstallErrorEvent,
+				"data":  template,
+			})
+		},
+	})
 	template := TaskTemplate{}
 	template.Assign(task)
 	context.JSON(template)

@@ -9,7 +9,6 @@ import (
 	srv "github.com/kardianos/service"
 	"github.com/mholt/archiver/v3"
 	"github.com/projectxpolaris/youplus/utils"
-	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
@@ -28,7 +27,7 @@ const (
 	StatusRunning
 )
 
-var StatusTextMapping map[int]string = map[int]string{
+var StatusTextMapping = map[int]string{
 	StatusStop:    "Stop",
 	StatusRunning: "Running",
 }
@@ -237,25 +236,36 @@ type UList struct {
 	InstallScript   string `json:"installScript"`
 	UnInstallScript string `json:"uninstallScript"`
 }
+type InstallAppCallback struct {
+	OnDone  func(task *InstallAppTask)
+	OnError func(task *InstallAppTask)
+}
 type InstallAppTask struct {
-	Id           string
-	Status       string
-	ErrorMessage string
-	Extra        InstallAppExtra
+	BaseTask
+	Extra    InstallAppExtra
+	Callback InstallAppCallback
 }
 
 type InstallAppExtra struct {
-	output string `json:"output"`
+	Output  string `json:"output"`
+	AppName string `json:"appName"`
 }
 
-func (p *TaskPool) NewInstallAppTask(packagePath string) Task {
-	id := xid.New().String()
+func (t *InstallAppTask) OnError(err error) {
+	t.SetError(err)
+	if t.Callback.OnError != nil {
+		t.Callback.OnError(t)
+	}
+	logrus.Error(err)
+}
+func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCallback) Task {
 	task := InstallAppTask{
-		Id:     id,
-		Status: TaskStatusRunning,
+		BaseTask: NewBaseTask(),
 		Extra: InstallAppExtra{
-			output: "",
+			Output:  "",
+			AppName: "",
 		},
+		Callback: callback,
 	}
 	go func() {
 		uList := &UList{}
@@ -263,7 +273,6 @@ func (p *TaskPool) NewInstallAppTask(packagePath string) Task {
 		z := archiver.Zip{
 			OverwriteExisting: true,
 		}
-
 		err := z.Walk(packagePath, func(f archiver.File) error {
 			if f.Name() == "ulist.json" {
 				raw, err := ioutil.ReadAll(f.ReadCloser)
@@ -279,17 +288,18 @@ func (p *TaskPool) NewInstallAppTask(packagePath string) Task {
 			return nil
 		})
 		if uList == nil && err != nil {
-			task.ErrorMessage = err.Error()
-			task.Status = TaskStatusError
-			logrus.Error(err)
+			task.OnError(err)
 			return
 		}
+		task.Extra.AppName = uList.Name
 		workDir := path.Join("/opt", uList.Name)
+		if _, err = os.Stat(workDir); !os.IsNotExist(err) {
+			task.OnError(errors.New("app already exist"))
+			return
+		}
 		err = z.Unarchive(packagePath, workDir)
 		if err != nil {
-			task.ErrorMessage = err.Error()
-			task.Status = TaskStatusError
-			logrus.Error(err)
+			task.OnError(err)
 			return
 		}
 		parts := strings.Split(uList.InstallScript, " ")
@@ -300,109 +310,92 @@ func (p *TaskPool) NewInstallAppTask(packagePath string) Task {
 		}
 		cmd := exec.Command(name, args...)
 		cmd.Dir = workDir
-		go func() {
-			stdout, err := cmd.StdoutPipe()
-			if err != nil {
-				logrus.Error(err)
-				return
-			}
-			scanner := bufio.NewScanner(stdout)
-			for scanner.Scan() {
-				m := scanner.Text()
-				task.Extra.output = m
-			}
-		}()
-		err = cmd.Start()
+		out, err := cmd.Output()
 		if err != nil {
-			task.ErrorMessage = err.Error()
-			task.Status = TaskStatusError
-			logrus.Error(err)
+			task.OnError(err)
 			return
 		}
+		task.Extra.Output = string(out)
 		err = DefaultAppManager.addApp(workDir)
 		if err != nil {
-			task.ErrorMessage = err.Error()
-			task.Status = TaskStatusError
-			logrus.Error(err)
+			task.OnError(err)
 			return
 		}
-		task.Status = TaskStatusDone
+		task.SetStatus(TaskStatusDone)
+		if task.Callback.OnDone != nil {
+			task.Callback.OnDone(&task)
+		}
 	}()
 	p.Lock()
 	p.Tasks = append(p.Tasks, &task)
 	p.Unlock()
 	return &task
 }
-func (t *InstallAppTask) GetId() string {
-	return t.Id
-}
 
-func (t *InstallAppTask) GetStatus() string {
-	return t.Status
+type UnInstallAppExtra struct {
+	Output  string `json:"output"`
+	AppName string `json:"appName"`
 }
-
-func (t *InstallAppTask) GetErrorMessage() string {
-	return t.ErrorMessage
+type UnInstallAppCallback struct {
+	OnDone  func(task *UnInstallAppTask)
+	OnError func(task *UnInstallAppTask)
 }
-
 type UnInstallAppTask struct {
-	Id           string
-	Status       string
-	ErrorMessage string
+	BaseTask
+	Extra    UnInstallAppExtra
+	Callback UnInstallAppCallback
 }
 
-func (t *UnInstallAppTask) GetId() string {
-	return t.Id
+func (t *UnInstallAppTask) OnError(err error) {
+	t.SetError(err)
+	if t.Callback.OnError != nil {
+		t.Callback.OnError(t)
+	}
+	logrus.Error(err)
 }
-
-func (t *UnInstallAppTask) GetStatus() string {
-	return t.Status
-}
-
-func (t *UnInstallAppTask) GetErrorMessage() string {
-	return t.ErrorMessage
-}
-func (p *TaskPool) NewUnInstallAppTask(appId string) Task {
-	id := xid.New().String()
+func (p *TaskPool) NewUnInstallAppTask(appId string, callback UnInstallAppCallback) Task {
 	task := UnInstallAppTask{
-		Id:     id,
-		Status: TaskStatusRunning,
+		BaseTask: NewBaseTask(),
+		Extra:    UnInstallAppExtra{},
+		Callback: callback,
 	}
 	go func() {
 		app := DefaultAppManager.GetAppByIdApp(appId)
 		uList := &UList{}
 		err := utils.ReadJson(path.Join(app.GetMeta().Dir, "ulist.json"), &uList)
 		if uList == nil && err != nil {
-			task.ErrorMessage = err.Error()
-			task.Status = TaskStatusError
-			logrus.Error(err)
+			task.OnError(err)
 			return
 		}
-		cmd := exec.Command("/usr/bin/sh", uList.UnInstallScript)
+		task.Extra.AppName = app.GetMeta().AppName
+		parts := strings.Split(uList.UnInstallScript, " ")
+		name := parts[0]
+		args := make([]string, 0)
+		if len(parts) > 1 {
+			args = parts[1:]
+		}
+		cmd := exec.Command(name, args...)
 		cmd.Dir = app.GetMeta().Dir
 		out, err := cmd.Output()
 		if err != nil {
-			task.ErrorMessage = err.Error()
-			task.Status = TaskStatusError
-			logrus.Error(err)
+			task.OnError(err)
 			return
 		}
-		logrus.Info(string(out))
+		task.Extra.Output = string(out)
 		err = os.RemoveAll(app.GetMeta().Dir)
 		if uList == nil && err != nil {
-			task.ErrorMessage = err.Error()
-			task.Status = TaskStatusError
-			logrus.Error(err)
+			task.OnError(err)
 			return
 		}
 		err = DefaultAppManager.RemoveApp(appId)
 		if err != nil {
-			task.ErrorMessage = err.Error()
-			task.Status = TaskStatusError
-			logrus.Error(err)
+			task.OnError(err)
 			return
 		}
-		task.Status = TaskStatusDone
+		task.SetStatus(TaskStatusDone)
+		if task.Callback.OnDone != nil {
+			task.Callback.OnDone(&task)
+		}
 	}()
 	p.Lock()
 	p.Tasks = append(p.Tasks, &task)

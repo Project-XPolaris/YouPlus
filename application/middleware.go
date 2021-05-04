@@ -9,6 +9,7 @@ var noAuthPath = []string{
 	"/user/auth",
 	"/admin/auth",
 	"/app/icon",
+	"/notification",
 }
 
 type AuthMiddleware struct {

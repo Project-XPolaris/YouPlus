@@ -9,6 +9,13 @@ import (
 	"sync"
 )
 
+const (
+	InstallErrorEvent   = "InstallError"
+	InstallDoneEvent    = "InstallDone"
+	UninstallErrorEvent = "UninstallError"
+	UninstallDoneEvent  = "UninstallDone"
+)
+
 var WebsocketLogger = logrus.New().WithField("scope", "websocket")
 var DefaultNotificationManager = NotificationManager{
 	Conns: map[string]*NotificationConnection{},
