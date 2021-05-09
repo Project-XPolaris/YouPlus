@@ -1,18 +1,32 @@
 package application
 
 import (
+	"errors"
 	"github.com/allentom/haruka"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
 	"github.com/projectxpolaris/youplus/yousmb"
 	"net/http"
 	"strings"
 )
 
+var (
+	ShareFolderExist = errors.New("share folder exist")
+)
 var createShareHandler haruka.RequestHandler = func(context *haruka.Context) {
 	var requestBody service.NewShareFolderOption
 	err := context.ParseJson(&requestBody)
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	count, err := database.CountShareFolderByName(requestBody.Name)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	if count != 0 {
+		AbortErrorWithStatus(ShareFolderExist, context, http.StatusBadRequest)
 		return
 	}
 	err = service.CreateNewShareFolder(&requestBody)

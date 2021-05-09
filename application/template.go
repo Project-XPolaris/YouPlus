@@ -15,10 +15,8 @@ type AppTemplate struct {
 }
 
 type ZFSPoolTemplate struct {
-	Name      string `json:"name,omitempty"`
-	Allocated uint64 `json:"allocated,omitempty"`
-	Size      uint64 `json:"size,omitempty"`
-	Free      uint64 `json:"free,omitempty"`
+	Name string          `json:"name,omitempty"`
+	Tree ZFSTreeTemplate `json:"tree"`
 }
 
 func (t *ZFSPoolTemplate) Assign(pool libzfs.Pool) error {
@@ -27,7 +25,61 @@ func (t *ZFSPoolTemplate) Assign(pool libzfs.Pool) error {
 		return err
 	}
 	t.Name = name
+	vt, err := pool.VDevTree()
+	if err != nil {
+		return err
+	}
+	if vt.Devices != nil {
+		t.Tree = ZFSTreeTemplate{}
+		t.Tree.Assign(&vt)
+	}
 	return nil
+}
+
+type ZFSTreeTemplate struct {
+	Name      string            `json:"name"`
+	Type      string            `json:"type"`
+	Allocated uint64            `json:"allocated,omitempty"`
+	Size      uint64            `json:"size,omitempty"`
+	Free      uint64            `json:"free,omitempty"`
+	Alloc     uint64            `json:"alloc,omitempty"`
+	Path      string            `json:"path"`
+	Devices   []ZFSTreeTemplate `json:"devices"`
+	L2Cache   []ZFSTreeTemplate `json:"l2Cache"`
+	Spares    []ZFSTreeTemplate `json:"spares"`
+}
+
+func (t *ZFSTreeTemplate) Assign(tree *libzfs.VDevTree) {
+	t.Name = tree.Name
+	t.Type = string(tree.Type)
+	t.Size = tree.Stat.Space
+	t.Alloc = tree.Stat.Alloc
+	t.Free = tree.Stat.Space - tree.Stat.Alloc
+	t.Path = tree.Path
+	t.Devices = []ZFSTreeTemplate{}
+	if tree.Devices != nil {
+		for _, device := range tree.Devices {
+			template := ZFSTreeTemplate{}
+			template.Assign(&device)
+			t.Devices = append(t.Devices, template)
+		}
+	}
+	t.L2Cache = []ZFSTreeTemplate{}
+	if tree.L2Cache != nil {
+		for _, l2 := range tree.L2Cache {
+			template := ZFSTreeTemplate{}
+			template.Assign(&l2)
+			t.L2Cache = append(t.L2Cache, template)
+		}
+	}
+	t.Spares = []ZFSTreeTemplate{}
+	if tree.Spares != nil {
+		for _, spare := range tree.Spares {
+			template := ZFSTreeTemplate{}
+			template.Assign(&spare)
+			t.Spares = append(t.Spares, template)
+		}
+	}
 }
 
 type StorageTemplate struct {
