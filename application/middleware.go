@@ -10,6 +10,7 @@ var noAuthPath = []string{
 	"/admin/auth",
 	"/app/icon",
 	"/notification",
+	"/info",
 }
 
 type AuthMiddleware struct {
@@ -26,4 +27,6 @@ func (m *AuthMiddleware) OnRequest(ctx *haruka.Context) {
 		ctx.Interrupt()
 		AbortErrorWithStatus(errors.New("need auth"), ctx, 403)
 	}
+	//service.ParseUser()
+
 }

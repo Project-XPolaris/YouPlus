@@ -3,6 +3,7 @@ package application
 import (
 	"errors"
 	"github.com/allentom/haruka"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
 	"github.com/projectxpolaris/youplus/yousmb"
@@ -29,7 +30,7 @@ var createShareHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(ShareFolderExist, context, http.StatusBadRequest)
 		return
 	}
-	err = service.CreateNewShareFolder(&requestBody)
+	err = service.CreateNewShareFolder(&requestBody, context.Param["claims"].(jwt.StandardClaims).Id)
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return

@@ -72,3 +72,10 @@ var appIconHandler haruka.RequestHandler = func(context *haruka.Context) {
 	}
 	http.ServeFile(context.Writer, context.Request, filepath.Join(app.GetMeta().Dir, app.GetMeta().Icon))
 }
+
+var serviceInfoHandler haruka.RequestHandler = func(context *haruka.Context) {
+	context.JSON(haruka.JSON{
+		"name":    "YouPlus service",
+		"success": true,
+	})
+}

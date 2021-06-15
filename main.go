@@ -61,6 +61,13 @@ func Program() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	// loading path converter
+	logger.Info("load converter")
+	err = service.DefaultAddressConverterManager.Load()
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	logger.Info("load apps")
 	err = service.LoadApps()
 	if err != nil {

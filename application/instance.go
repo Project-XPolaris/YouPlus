@@ -47,6 +47,11 @@ func RunApplication() {
 	e.Router.POST("/account/password", changeAccountPasswordHandler)
 	e.Router.GET("/system/info", getSystemInfoHandler)
 	e.Router.GET("/tasks", tasksListHandler)
+	e.Router.GET("/path/readdir", ReadDirHandler)
+	e.Router.GET("/path/realpath", GetRealPathHandler)
+	e.Router.GET("/info", serviceInfoHandler)
+	e.Router.POST("/os/shutdown", showdownHandler)
+	e.Router.POST("/os/reboot", rebootHandler)
 	e.Router.AddHandler("/notification", notificationSocketHandler)
 	e.UseCors(cors.AllowAll())
 	e.UseMiddleware(middleware.NewJWTMiddleware(&middleware.NewJWTMiddlewareOption{
