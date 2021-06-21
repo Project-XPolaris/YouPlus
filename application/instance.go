@@ -50,7 +50,7 @@ func RunApplication() {
 	e.Router.GET("/path/readdir", ReadDirHandler)
 	e.Router.GET("/path/realpath", GetRealPathHandler)
 	e.Router.GET("/info", serviceInfoHandler)
-	e.Router.POST("/os/shutdown", showdownHandler)
+	e.Router.POST("/os/shutdown", shutdownHandler)
 	e.Router.POST("/os/reboot", rebootHandler)
 	e.Router.AddHandler("/notification", notificationSocketHandler)
 	e.UseCors(cors.AllowAll())

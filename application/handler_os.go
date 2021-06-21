@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-var showdownHandler haruka.RequestHandler = func(context *haruka.Context) {
+var shutdownHandler haruka.RequestHandler = func(context *haruka.Context) {
 	err := service.Shutdown()
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
