@@ -52,6 +52,17 @@ func (c *Client) CreateNewShare(option *CreateShareOption) error {
 	}
 	return nil
 }
+func (c *Client) CreateNewShareWithRaw(properties map[string]interface{}) error {
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(properties).
+		Post(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/folders/add"))
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func (c *Client) AddUser(username string, password string) error {
 	requestBody := map[string]interface{}{
 		"username": username,
@@ -125,6 +136,23 @@ func (c *Client) RemoveFolder(name string) error {
 		SetHeader("Content-Type", "application/json").
 		SetQueryParam("name", name).
 		Get(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/folders/remove"))
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+type FolderRequestBody struct {
+	Name       string                 `json:"name"`
+	Properties map[string]interface{} `json:"properties"`
+}
+
+func (c *Client) UpdateFolder(body *FolderRequestBody) error {
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(body).
+		Post(fmt.Sprintf("%s%s", config.Config.YouSMBAddr, "/folders/update"))
 	if err != nil {
 		return err
 	}

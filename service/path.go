@@ -13,14 +13,17 @@ import (
 
 var PathNotFoundError = errors.New("target path not found")
 var InvalidatePathError = errors.New("invalidate path")
+var PathNotAccessible = errors.New("not accessible path")
 var AddressConverterLogger = logrus.New().WithFields(logrus.Fields{
 	"scope": "AddressConverter",
 })
 var DefaultAddressConverterManager = AddressConverterManager{}
 
 type Entity struct {
-	Name string
-	Path string
+	Name        string
+	Path        string
+	Public      bool
+	AccessUsers map[string]bool
 }
 type AddressConverterManager struct {
 	Entities []*Entity
@@ -32,8 +35,15 @@ type PathItem struct {
 }
 
 func (m *AddressConverterManager) Load() error {
+	m.Entities = []*Entity{}
 	var folders []database.ShareFolder
-	err := database.Instance.Preload("ZFSStorage").Preload("PartStorage").Find(&folders).Error
+	err := database.Instance.
+		Preload("ZFSStorage").
+		Preload("PartStorage").
+		Preload("ReadUsers").
+		Where("enable = ?", true).
+		Find(&folders).
+		Error
 	if err != nil {
 		return err
 	}
@@ -50,15 +60,33 @@ func (m *AddressConverterManager) Load() error {
 		if folder.ZFSStorage != nil {
 			entity.Path = filepath.Join(folder.ZFSStorage.MountPoint, folder.Name)
 		}
+		if folder.Public {
+			entity.Public = true
+		} else {
+			entity.AccessUsers = map[string]bool{}
+			for _, user := range folder.ReadUsers {
+				entity.AccessUsers[user.Username] = true
+			}
+		}
 		m.Entities = append(m.Entities, entity)
 	}
 	AddressConverterLogger.Info(fmt.Sprintf("success load %d entites", len(m.Entities)))
 	return nil
 }
-func (m *AddressConverterManager) ReadDir(target string) ([]PathItem, error) {
+func (m *AddressConverterManager) loadPermission(folders []database.ShareFolder) error {
+
+	return nil
+}
+func (m *AddressConverterManager) ReadDir(target string, username string) ([]PathItem, error) {
 	result := make([]PathItem, 0)
+	// root path
 	if target == "/" || len(target) == 0 {
 		for _, entity := range m.Entities {
+			if !entity.Public {
+				if _, exist := entity.AccessUsers[username]; !exist {
+					continue
+				}
+			}
 			result = append(result, PathItem{
 				RealPath: entity.Path,
 				Path:     filepath.Join(entity.Name),
@@ -74,11 +102,14 @@ func (m *AddressConverterManager) ReadDir(target string) ([]PathItem, error) {
 	rootDir := pathParts[0]
 	entity := linq.From(m.Entities).FirstWith(func(i interface{}) bool {
 		return i.(*Entity).Name == rootDir
-	})
+	}).(*Entity)
 	if entity == nil {
 		return nil, PathNotFoundError
 	}
-	realPath := filepath.Join(entity.(*Entity).Path, filepath.Join(pathParts[1:]...))
+	if _, exist := entity.AccessUsers[username]; !exist {
+		return nil, PathNotAccessible
+	}
+	realPath := filepath.Join(entity.Path, filepath.Join(pathParts[1:]...))
 	items, err := os.ReadDir(realPath)
 	if err != nil {
 		return nil, err
@@ -98,7 +129,7 @@ func (m *AddressConverterManager) ReadDir(target string) ([]PathItem, error) {
 	return result, nil
 }
 
-func (m *AddressConverterManager) GetRealPath(target string) (string, error) {
+func (m *AddressConverterManager) GetRealPath(target string, username string) (string, error) {
 	if target == "/" || len(target) == 0 {
 		return "", InvalidatePathError
 	}
@@ -109,10 +140,13 @@ func (m *AddressConverterManager) GetRealPath(target string) (string, error) {
 	rootDir := pathParts[0]
 	entity := linq.From(m.Entities).FirstWith(func(i interface{}) bool {
 		return i.(*Entity).Name == rootDir
-	})
+	}).(*Entity)
 	if entity == nil {
 		return "", PathNotFoundError
 	}
-	realPath := filepath.Join(entity.(*Entity).Path, filepath.Join(pathParts[1:]...))
+	if _, exist := entity.AccessUsers[username]; !exist {
+		return "", PathNotAccessible
+	}
+	realPath := filepath.Join(entity.Path, filepath.Join(pathParts[1:]...))
 	return realPath, nil
 }

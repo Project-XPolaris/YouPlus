@@ -8,7 +8,7 @@ import (
 var Instance *gorm.DB
 
 func ConnectToDatabase() (err error) {
-	Instance, err = gorm.Open(sqlite.Open("data.db"), &gorm.Config{})
+	Instance, err = gorm.Open(sqlite.Open("data.db"), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
 	if err != nil {
 		return
 	}

@@ -2,13 +2,15 @@ package application
 
 import (
 	"github.com/allentom/haruka"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/projectxpolaris/youplus/service"
 	"net/http"
 )
 
 var ReadDirHandler haruka.RequestHandler = func(context *haruka.Context) {
 	target := context.GetQueryString("target")
-	items, err := service.DefaultAddressConverterManager.ReadDir(target)
+	claims := context.Param["claims"].(*jwt.StandardClaims)
+	items, err := service.DefaultAddressConverterManager.ReadDir(target, claims.Id)
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
@@ -17,7 +19,8 @@ var ReadDirHandler haruka.RequestHandler = func(context *haruka.Context) {
 }
 var GetRealPathHandler haruka.RequestHandler = func(context *haruka.Context) {
 	target := context.GetQueryString("target")
-	realPath, err := service.DefaultAddressConverterManager.GetRealPath(target)
+	claims := context.Param["claims"].(*jwt.StandardClaims)
+	realPath, err := service.DefaultAddressConverterManager.GetRealPath(target, claims.Id)
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return

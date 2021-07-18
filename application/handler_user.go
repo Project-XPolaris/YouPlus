@@ -66,7 +66,7 @@ var userLoginHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
 	}
-	tokenStr, err := service.UserLogin(body.Username, body.Password, true)
+	uid, tokenStr, err := service.UserLogin(body.Username, body.Password, true)
 	if err != nil {
 		AbortErrorWithStatus(err, context, 500)
 		return
@@ -74,6 +74,7 @@ var userLoginHandler haruka.RequestHandler = func(context *haruka.Context) {
 	context.JSON(haruka.JSON{
 		"success": true,
 		"token":   tokenStr,
+		"uid":     uid,
 	})
 }
 var generateAuthHandler haruka.RequestHandler = func(context *haruka.Context) {
@@ -83,7 +84,7 @@ var generateAuthHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
 	}
-	tokenStr, err := service.UserLogin(body.Username, body.Password, false)
+	uid, tokenStr, err := service.UserLogin(body.Username, body.Password, false)
 	if err != nil {
 		AbortErrorWithStatus(err, context, 500)
 		return
@@ -91,6 +92,7 @@ var generateAuthHandler haruka.RequestHandler = func(context *haruka.Context) {
 	context.JSON(haruka.JSON{
 		"success": true,
 		"token":   tokenStr,
+		"uid":     uid,
 	})
 }
 var checkTokenHandler haruka.RequestHandler = func(context *haruka.Context) {

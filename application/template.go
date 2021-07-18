@@ -102,14 +102,14 @@ type ShareFolderUsers struct {
 	Name string `json:"name"`
 }
 type ShareFolderTemplate struct {
-	Id             uint               `json:"id"`
-	Name           string             `json:"name"`
-	Storage        StorageTemplate    `json:"storage,omitempty"`
-	ValidateUsers  []ShareFolderUsers `json:"validateUsers,omitempty"`
-	WriteableUsers []ShareFolderUsers `json:"writeableUsers,omitempty"`
-	Public         string             `json:"public"`
-	Readonly       string             `json:"readonly"`
-	Writable       string             `json:"writable"`
+	Id         uint               `json:"id"`
+	Name       string             `json:"name"`
+	Storage    StorageTemplate    `json:"storage,omitempty"`
+	ReadUsers  []ShareFolderUsers `json:"readUsers,omitempty"`
+	WriteUsers []ShareFolderUsers `json:"writeUsers,omitempty"`
+	Enable     bool               `json:"enable"`
+	Public     bool               `json:"public"`
+	Readonly   bool               `json:"readonly"`
 }
 
 type UserTemplate struct {

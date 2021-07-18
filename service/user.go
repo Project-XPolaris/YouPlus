@@ -357,3 +357,8 @@ func (g *SystemUserGroup) HasUser(username string) bool {
 	}
 	return false
 }
+
+func GetUserCount() (count int64, err error) {
+	err = database.Instance.Model(&database.User{}).Count(&count).Error
+	return
+}

@@ -9,6 +9,12 @@ type ShareFolder struct {
 	ZFSStorage    *ZFSStorage
 	PartStorageId string
 	PartStorage   *ZFSStorage
+	WriteUsers    []*User `gorm:"many2many:user_writeFolders;"`
+	ReadUsers     []*User `gorm:"many2many:user_readFolders;"`
+	Public        bool
+	Enable        bool
+	Readonly      bool
+	Path          string
 }
 
 func GetShareFolderByName(name string) (*ShareFolder, error) {

@@ -50,7 +50,14 @@ func (m *ZFSManager) CreatePool(name string, paths ...string) error {
 	}
 	return nil
 }
-
+func (m *ZFSManager) GetPoolCount() (int, error) {
+	pools, err := libzfs.PoolOpenAll()
+	if err != nil {
+		return 0, err
+	}
+	defer libzfs.PoolCloseAll(pools)
+	return len(pools), nil
+}
 func (m *ZFSManager) RemovePool(name string) error {
 	pool, err := libzfs.PoolOpen(name)
 	if err != nil {

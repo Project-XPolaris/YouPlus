@@ -3,12 +3,9 @@ package application
 import (
 	"errors"
 	"github.com/allentom/haruka"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
-	"github.com/projectxpolaris/youplus/yousmb"
 	"net/http"
-	"strings"
 )
 
 var (
@@ -30,7 +27,12 @@ var createShareHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(ShareFolderExist, context, http.StatusBadRequest)
 		return
 	}
-	err = service.CreateNewShareFolder(&requestBody, context.Param["claims"].(jwt.StandardClaims).Id)
+	err = service.CreateNewShareFolder(&requestBody)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	err = service.DefaultAddressConverterManager.Load()
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
@@ -46,16 +48,14 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
-	smbConfig, err := yousmb.DefaultClient.GetConfig()
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
-		return
-	}
 	shareFolders := make([]ShareFolderTemplate, 0)
 	for _, shareFolderConfig := range folderList {
 		template := ShareFolderTemplate{
-			Id:   shareFolderConfig.ID,
-			Name: shareFolderConfig.Name,
+			Id:       shareFolderConfig.ID,
+			Name:     shareFolderConfig.Name,
+			Enable:   shareFolderConfig.Enable,
+			Public:   shareFolderConfig.Public,
+			Readonly: shareFolderConfig.Readonly,
 		}
 		sid := ""
 		if len(shareFolderConfig.PartStorageId) != 0 {
@@ -72,64 +72,30 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 		storageTemplate.Assign(storage)
 		template.Storage = storageTemplate
 		// get config
-		var targetSection *yousmb.SMBSection
-		for _, section := range smbConfig.Sections {
-			if section.Name == shareFolderConfig.Name {
-				targetSection = &section
-				break
+		readUsers := make([]ShareFolderUsers, 0)
+		for _, user := range shareFolderConfig.ReadUsers {
+			systemUser := service.DefaultUserManager.GetUserByName(user.Username)
+			if systemUser == nil {
+				continue
 			}
+			readUsers = append(readUsers, ShareFolderUsers{
+				Uid:  systemUser.Uid,
+				Name: systemUser.Username,
+			})
 		}
-		if targetSection == nil {
-			continue
-		}
-		// validate user
-		if rawUser, exist := targetSection.Fields["valid users"]; exist {
-			userNames := strings.Split(rawUser, ",")
-			validaUsers := make([]ShareFolderUsers, 0)
-			for _, userName := range userNames {
-				user := service.DefaultUserManager.GetUserByName(userName)
-				if user == nil {
-					continue
-				}
-				userTemplate := ShareFolderUsers{
-					Uid:  user.Uid,
-					Name: user.Username,
-				}
-				validaUsers = append(validaUsers, userTemplate)
+		template.ReadUsers = readUsers
+		writeUsers := make([]ShareFolderUsers, 0)
+		for _, user := range shareFolderConfig.WriteUsers {
+			systemUser := service.DefaultUserManager.GetUserByName(user.Username)
+			if systemUser == nil {
+				continue
 			}
-			template.ValidateUsers = validaUsers
+			writeUsers = append(writeUsers, ShareFolderUsers{
+				Uid:  systemUser.Uid,
+				Name: systemUser.Username,
+			})
 		}
-		if rawUser, exist := targetSection.Fields["write list"]; exist {
-			userNames := strings.Split(rawUser, ",")
-			writeUsers := make([]ShareFolderUsers, 0)
-			for _, userName := range userNames {
-				user := service.DefaultUserManager.GetUserByName(userName)
-				if user == nil {
-					continue
-				}
-				userTemplate := ShareFolderUsers{
-					Uid:  user.Uid,
-					Name: user.Username,
-				}
-				writeUsers = append(writeUsers, userTemplate)
-			}
-			template.WriteableUsers = writeUsers
-		}
-		if public, exist := targetSection.Fields["public"]; exist {
-			template.Public = public
-		} else {
-			template.Public = "Not set"
-		}
-		if readonly, exist := targetSection.Fields["read only"]; exist {
-			template.Readonly = readonly
-		} else {
-			template.Readonly = "Not set"
-		}
-		if writable, exist := targetSection.Fields["writable"]; exist {
-			template.Writable = writable
-		} else {
-			template.Writable = "Not set"
-		}
+		template.WriteUsers = writeUsers
 		shareFolders = append(shareFolders, template)
 	}
 	context.JSON(haruka.JSON{
@@ -149,6 +115,11 @@ var updateShareFolder haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
+	err = service.DefaultAddressConverterManager.Load()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
 	context.JSON(haruka.JSON{
 		"success": true,
 	})
@@ -161,6 +132,11 @@ var removeShareHandler haruka.RequestHandler = func(context *haruka.Context) {
 		return
 	}
 	err = service.RemoveShare(uint(id))
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	err = service.DefaultAddressConverterManager.Load()
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return

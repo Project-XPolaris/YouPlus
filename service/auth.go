@@ -14,20 +14,20 @@ var (
 	SuperuserGroup       = "youplusadmin"
 )
 
-func UserLogin(username string, password string, admin bool) (string, error) {
+func UserLogin(username string, password string, admin bool) (string, string, error) {
 	user := DefaultUserManager.GetUserByName(username)
 	if user == nil {
-		return "", UserNotFoundError
+		return "", "", UserNotFoundError
 	}
 	group := DefaultUserManager.GetGroupByName(SuperuserGroup)
 	if group == nil {
-		return "", NeedCreateAdminError
+		return "", "", NeedCreateAdminError
 	}
 	if admin && !group.HasUser(username) {
-		return "", PermissionError
+		return "", "", PermissionError
 	}
 	if !DefaultUserManager.CheckPassword(username, password) {
-		return "", InvalidateUserError
+		return "", "", InvalidateUserError
 	}
 	// Create the Claims
 	claims := &jwt.StandardClaims{
@@ -39,9 +39,9 @@ func UserLogin(username string, password string, admin bool) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := token.SignedString([]byte(config.Config.ApiKey))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return ss, nil
+	return user.Uid, ss, nil
 }
 
 func ParseUser(tokenString string) (*SystemUser, error) {
