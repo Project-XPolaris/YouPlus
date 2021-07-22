@@ -22,6 +22,7 @@ func RunApplication() {
 	e.Router.POST("/autoStartApps", appSetAutoStart)
 	e.Router.DELETE("/autoStartApps", appRemoveAutoStart)
 	e.Router.GET("/disks", getDiskListHandler)
+	e.Router.GET("/disk/smart", diskSmartHandler)
 	e.Router.POST("/share", createShareHandler)
 	e.Router.GET("/share", getShareFolderList)
 	e.Router.DELETE("/share", removeShareHandler)

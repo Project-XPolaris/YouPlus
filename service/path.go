@@ -106,8 +106,10 @@ func (m *AddressConverterManager) ReadDir(target string, username string) ([]Pat
 	if entity == nil {
 		return nil, PathNotFoundError
 	}
-	if _, exist := entity.AccessUsers[username]; !exist {
-		return nil, PathNotAccessible
+	if !entity.Public {
+		if _, exist := entity.AccessUsers[username]; !exist {
+			return nil, PathNotAccessible
+		}
 	}
 	realPath := filepath.Join(entity.Path, filepath.Join(pathParts[1:]...))
 	items, err := os.ReadDir(realPath)

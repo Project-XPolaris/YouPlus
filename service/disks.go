@@ -1,6 +1,12 @@
 package service
 
-import "github.com/projectxpolaris/youplus/utils"
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/projectxpolaris/youplus/utils"
+	"os/exec"
+	"strings"
+)
 
 type Disk struct {
 	Name  string  `json:"name,omitempty"`
@@ -49,7 +55,15 @@ func ReadDiskList() []*Disk {
 	}
 	return result
 }
-
+func GetDiskByName(name string) *Disk {
+	disks := ReadDiskList()
+	for _, disk := range disks {
+		if disk.Name == name {
+			return disk
+		}
+	}
+	return nil
+}
 func GetPartByName(name string) *Part {
 	disks := utils.Lsblk()
 	for _, block := range disks {
@@ -58,4 +72,54 @@ func GetPartByName(name string) *Part {
 		}
 	}
 	return nil
+}
+
+type SmartInfoAttr struct {
+	Id        int    `json:"id"`
+	Name      string `json:"name"`
+	Worst     int    `json:"worst"`
+	Threshold int    `json:"threshold"`
+	Value     int    `json:"value"`
+}
+type DiskSmartInfo struct {
+	ModelFamily  string          `json:"modelFamily"`
+	ModelName    string          `json:"modelName"`
+	SerialNumber string          `json:"serialNumber"`
+	Status       bool            `json:"status"`
+	Attrs        []SmartInfoAttr `json:"attrs"`
+}
+
+func (d *Disk) GetSmartInfo() (*DiskSmartInfo, error) {
+	if strings.HasPrefix(d.Name, "nvme") {
+		return &DiskSmartInfo{Attrs: []SmartInfoAttr{}}, nil
+	}
+	cmd := exec.Command("smartctl", "--all", "--json", fmt.Sprintf("/dev/%s", d.Name))
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	result := map[string]interface{}{}
+	err = json.Unmarshal(output, &result)
+	info := &DiskSmartInfo{
+		ModelFamily:  result["model_family"].(string),
+		ModelName:    result["model_name"].(string),
+		SerialNumber: result["serial_number"].(string),
+		Status:       result["smart_status"].(map[string]interface{})["passed"].(bool),
+		Attrs:        []SmartInfoAttr{},
+	}
+	rawAttrs := result["ata_smart_attributes"].(map[string]interface{})["table"].([]interface{})
+	for _, rawAttr := range rawAttrs {
+		attr := SmartInfoAttr{
+			Id:        int(rawAttr.(map[string]interface{})["id"].(float64)),
+			Name:      rawAttr.(map[string]interface{})["name"].(string),
+			Worst:     int(rawAttr.(map[string]interface{})["worst"].(float64)),
+			Threshold: int(rawAttr.(map[string]interface{})["thresh"].(float64)),
+			Value:     int(rawAttr.(map[string]interface{})["raw"].(map[string]interface{})["value"].(float64)),
+		}
+		info.Attrs = append(info.Attrs, attr)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
 }
