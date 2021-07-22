@@ -362,3 +362,58 @@ func GetUserCount() (count int64, err error) {
 	err = database.Instance.Model(&database.User{}).Count(&count).Error
 	return
 }
+
+type UserShareFolder struct {
+	Name   string `json:"name"`
+	Access bool   `json:"access"`
+	Read   bool   `json:"read"`
+	Write  bool   `json:"write"`
+}
+
+func GetUserShareList(user *database.User) ([]*UserShareFolder, error) {
+	folders, err := GetShareFolders()
+	if err != nil {
+		return nil, err
+	}
+	// remove invalidate
+	From(folders).Where(func(i interface{}) bool {
+		for _, invalidUser := range i.(*database.ShareFolder).InvalidUsers {
+			if invalidUser.Username == user.Username {
+				return false
+			}
+		}
+		return true
+	}).ToSlice(&folders)
+	userFolders := make([]*UserShareFolder, 0)
+	for _, folder := range folders {
+		inReadUsers := From(folder.ReadUsers).AnyWith(func(i interface{}) bool {
+			return i.(*database.User).Username == user.Username
+		})
+		inWriteUsers := From(folder.WriteUsers).AnyWith(func(i interface{}) bool {
+			return i.(*database.User).Username == user.Username
+		})
+		userFolder := &UserShareFolder{
+			Name:   folder.Name,
+			Read:   true,
+			Access: true,
+		}
+		if folder.Readonly {
+			if inWriteUsers {
+				userFolder.Write = true
+			} else {
+				userFolder.Write = false
+			}
+		} else {
+			if inReadUsers {
+				userFolder.Write = false
+				if inWriteUsers {
+					userFolder.Write = true
+				}
+			} else {
+				userFolder.Write = true
+			}
+		}
+		userFolders = append(userFolders, userFolder)
+	}
+	return userFolders, nil
+}

@@ -17,12 +17,9 @@ var (
 )
 
 type NewShareFolderOption struct {
-	StorageId  string   `json:"storageId,omitempty"`
-	Name       string   `json:"name,omitempty"`
-	Public     bool     `json:"public,omitempty"`
-	Readonly   bool     `json:"readonly"`
-	ReadUsers  []string `json:"readUsers,omitempty"`
-	WriteUsers []string `json:"writeUsers,omitempty"`
+	StorageId string `json:"storageId,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Public    bool   `json:"public,omitempty"`
 }
 
 func CreateNewShareFolder(option *NewShareFolderOption) error {
@@ -40,24 +37,11 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 	// create share
 
 	shareFolder := database.ShareFolder{
-		Name:     option.Name,
-		Public:   option.Public,
-		Path:     shareFolderPath,
-		Readonly: option.Readonly,
-		Enable:   true,
+		Name:   option.Name,
+		Public: option.Public,
+		Path:   shareFolderPath,
+		Enable: false,
 	}
-	var validUsers []*database.User
-	err = database.Instance.Where("username in ?", option.ReadUsers).Find(&validUsers).Error
-	if err != nil {
-		return err
-	}
-	shareFolder.ReadUsers = validUsers
-	var writeUsers []*database.User
-	err = database.Instance.Where("username in ?", option.WriteUsers).Find(&writeUsers).Error
-	if err != nil {
-		return err
-	}
-	shareFolder.WriteUsers = writeUsers
 	switch storage.(type) {
 	case *ZFSPoolStorage:
 		shareFolder.ZFSStorageId = storage.GetId()
@@ -74,6 +58,16 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 	}
 	return nil
 }
+func getSMBUserList(list []*database.User) []string {
+	userList := make([]string, 0)
+	if list == nil {
+		return userList
+	}
+	for _, user := range list {
+		userList = append(userList, user.Username)
+	}
+	return userList
+}
 func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 	properties := map[string]interface{}{
 		"path":           folder.Path,
@@ -83,17 +77,11 @@ func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 		"available":      utils.GetSmbBoolText(folder.Enable),
 		"browseable":     "yes",
 		"public":         utils.GetSmbBoolText(folder.Public),
+		"valid users":    strings.Join(getSMBUserList(folder.ValidUsers), ","),
+		"invalid users":  strings.Join(getSMBUserList(folder.InvalidUsers), ","),
+		"read list":      strings.Join(getSMBUserList(folder.ReadUsers), ","),
+		"write list":     strings.Join(getSMBUserList(folder.WriteUsers), ","),
 	}
-	validUsers := []string{}
-	for _, readUser := range folder.ReadUsers {
-		validUsers = append(validUsers, readUser.Username)
-	}
-	properties["valid_users"] = strings.Join(validUsers, ",")
-	writeList := []string{}
-	for _, writeUser := range folder.WriteUsers {
-		writeList = append(writeList, writeUser.Username)
-	}
-	properties["write_list"] = strings.Join(writeList, ",")
 	if folder.Public {
 		properties["public"] = "yes"
 	}
@@ -116,7 +104,7 @@ func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 }
 func GetShareFolders() ([]*database.ShareFolder, error) {
 	var folders []*database.ShareFolder
-	err := database.Instance.Preload("ReadUsers").Preload("WriteUsers").Find(&folders).Error
+	err := database.Instance.Preload("ValidUsers").Preload("InvalidUsers").Preload("ReadUsers").Preload("WriteUsers").Find(&folders).Error
 	if err != nil {
 		return nil, err
 	}
@@ -132,48 +120,64 @@ func GetShareFolderCount() (int64, error) {
 }
 
 type UpdateShareFolderOption struct {
-	Name       string   `json:"name"`
-	ReadUsers  []string `json:"readUsers"`
-	WriteUsers []string `json:"writeUsers"`
-	Public     bool     `json:"public"`
-	Readonly   bool     `json:"readonly"`
-	Enable     bool     `json:"enable"`
+	Name         string   `json:"name"`
+	ReadUsers    []string `json:"readUsers"`
+	WriteUsers   []string `json:"writeUsers"`
+	ValidUsers   []string `json:"validUsers"`
+	InvalidUsers []string `json:"invalidUsers"`
+	Public       bool     `json:"public"`
+	Readonly     bool     `json:"readonly"`
+	Enable       bool     `json:"enable"`
 }
 
-func UpdateSMBConfig(option *UpdateShareFolderOption) error {
-	var folder database.ShareFolder
-	err := database.Instance.Where("name = ?", option.Name).Preload("ReadUsers").Preload("WriteUsers").First(&folder).Error
+func putFolderUserList(folder *database.ShareFolder, usernameList []string, rel string) error {
+	var users []*database.User
+	err := database.Instance.Where("username in ?", usernameList).Find(&users).Error
 	if err != nil {
 		return err
 	}
+	err = database.Instance.Model(folder).Association(rel).Clear()
+	if err != nil {
+		return err
+	}
+	err = database.Instance.Model(folder).Association(rel).Append(users)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func UpdateSMBConfig(option *UpdateShareFolderOption) error {
+	var folder database.ShareFolder
+	err := database.Instance.Where("name = ?", option.Name).
+		Preload("ValidUsers").
+		Preload("InvalidUsers").
+		Preload("ReadUsers").
+		Preload("WriteUsers").
+		First(&folder).
+		Error
+	if err != nil {
+		return err
+	}
+	if option.ValidUsers != nil {
+		err = putFolderUserList(&folder, option.ValidUsers, "ValidUsers")
+		if err != nil {
+			return err
+		}
+	}
+	if option.InvalidUsers != nil {
+		err = putFolderUserList(&folder, option.InvalidUsers, "InvalidUsers")
+		if err != nil {
+			return err
+		}
+	}
 	if option.ReadUsers != nil {
-		var validUsers []*database.User
-		err = database.Instance.Where("username in ?", option.ReadUsers).Find(&validUsers).Error
-		if err != nil {
-			return err
-		}
-		folder.ReadUsers = validUsers
-		err = database.Instance.Model(&folder).Association("ReadUsers").Clear()
-		if err != nil {
-			return err
-		}
-		err = database.Instance.Model(&folder).Association("ReadUsers").Append(validUsers)
+		err = putFolderUserList(&folder, option.ReadUsers, "ReadUsers")
 		if err != nil {
 			return err
 		}
 	}
 	if option.WriteUsers != nil {
-		var writeUsers []*database.User
-		err = database.Instance.Where("username in ?", option.WriteUsers).Find(&writeUsers).Error
-		if err != nil {
-			return err
-		}
-		folder.WriteUsers = writeUsers
-		err = database.Instance.Model(&folder).Association("WriteUsers").Clear()
-		if err != nil {
-			return err
-		}
-		err = database.Instance.Model(&folder).Association("WriteUsers").Append(writeUsers)
+		err = putFolderUserList(&folder, option.WriteUsers, "WriteUsers")
 		if err != nil {
 			return err
 		}

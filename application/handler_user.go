@@ -5,6 +5,7 @@ import (
 	"github.com/allentom/haruka"
 	"github.com/allentom/haruka/validator"
 	"github.com/pkg/errors"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
 	"net/http"
 )
@@ -273,5 +274,24 @@ var addUserToUserGroupHandler haruka.RequestHandler = func(context *haruka.Conte
 	}
 	context.JSON(haruka.JSON{
 		"success": true,
+	})
+}
+
+var getUserShareFolderListHandler haruka.RequestHandler = func(context *haruka.Context) {
+	username := context.GetQueryString("username")
+	var user database.User
+	err := database.Instance.Where("username  = ?", username).Find(&user).Error
+	if err != nil {
+		AbortErrorWithStatus(errors.New("user not found"), context, 404)
+		return
+	}
+	userShareFolder, err := service.GetUserShareList(&user)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+		"folders": userShareFolder,
 	})
 }

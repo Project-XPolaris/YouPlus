@@ -38,6 +38,7 @@ func RunApplication() {
 	e.Router.POST("/user/auth", generateAuthHandler)
 	e.Router.POST("/admin/auth", userLoginHandler)
 	e.Router.GET("/user/auth", checkTokenHandler)
+	e.Router.GET("/user/share", getUserShareFolderListHandler)
 	e.Router.GET("/groups", userGroupListHandler)
 	e.Router.POST("/groups", addUserGroup)
 	e.Router.DELETE("/groups", removeUserGroup)

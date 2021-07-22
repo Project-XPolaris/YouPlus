@@ -57,6 +57,25 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 			Public:   shareFolderConfig.Public,
 			Readonly: shareFolderConfig.Readonly,
 		}
+		if shareFolderConfig.Public {
+			template.Guest = service.UserShareFolder{
+				Name:   shareFolderConfig.Name,
+				Access: true,
+				Read:   true,
+				Write:  !shareFolderConfig.Readonly,
+			}
+		} else {
+			template.Guest = service.UserShareFolder{
+				Name:   shareFolderConfig.Name,
+				Access: false,
+			}
+		}
+		template.Other = service.UserShareFolder{
+			Name:   shareFolderConfig.Name,
+			Access: true,
+			Read:   true,
+			Write:  !shareFolderConfig.Readonly,
+		}
 		sid := ""
 		if len(shareFolderConfig.PartStorageId) != 0 {
 			sid = shareFolderConfig.PartStorageId
@@ -72,6 +91,30 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 		storageTemplate.Assign(storage)
 		template.Storage = storageTemplate
 		// get config
+		validUsers := make([]ShareFolderUsers, 0)
+		for _, user := range shareFolderConfig.ValidUsers {
+			systemUser := service.DefaultUserManager.GetUserByName(user.Username)
+			if systemUser == nil {
+				continue
+			}
+			validUsers = append(validUsers, ShareFolderUsers{
+				Uid:  systemUser.Uid,
+				Name: systemUser.Username,
+			})
+		}
+		template.ValidUsers = validUsers
+		invalidUsers := make([]ShareFolderUsers, 0)
+		for _, user := range shareFolderConfig.InvalidUsers {
+			systemUser := service.DefaultUserManager.GetUserByName(user.Username)
+			if systemUser == nil {
+				continue
+			}
+			invalidUsers = append(invalidUsers, ShareFolderUsers{
+				Uid:  systemUser.Uid,
+				Name: systemUser.Username,
+			})
+		}
+		template.InvalidUsers = invalidUsers
 		readUsers := make([]ShareFolderUsers, 0)
 		for _, user := range shareFolderConfig.ReadUsers {
 			systemUser := service.DefaultUserManager.GetUserByName(user.Username)
