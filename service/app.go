@@ -8,6 +8,7 @@ import (
 	"github.com/ahmetb/go-linq/v3"
 	srv "github.com/kardianos/service"
 	"github.com/mholt/archiver/v3"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/utils"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
@@ -231,11 +232,86 @@ func GetServiceByName(name string) (target srv.Service, err error) {
 }
 
 type UList struct {
-	InstallType     string `json:"installType"`
-	Name            string `json:"name"`
-	InstallScript   string `json:"installScript"`
-	UnInstallScript string `json:"uninstallScript"`
+	InstallType     string   `json:"installType"`
+	Name            string   `json:"name"`
+	InstallScript   []string `json:"installScript"`
+	UnInstallScript []string `json:"uninstallScript"`
 }
+
+func getListFromInstallPack(packagePath string) (*UList, error) {
+	uList := &UList{}
+	interruptErr := errors.New("interrupt")
+	z := archiver.Tar{
+		OverwriteExisting: true,
+	}
+	err := z.Walk(packagePath, func(f archiver.File) error {
+		if f.Name() == "ulist.json" {
+			raw, err := ioutil.ReadAll(f.ReadCloser)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(raw, uList)
+			if err != nil {
+				return err
+			}
+			return interruptErr
+		}
+		return nil
+	})
+	if err != nil && uList == nil {
+		return nil, err
+	}
+	return uList, nil
+}
+func getConfigFromInstallPack(packagePath string) (*BaseApp, error) {
+	conf := &BaseApp{}
+	interruptErr := errors.New("interrupt")
+	z := archiver.Tar{
+		OverwriteExisting: true,
+	}
+	err := z.Walk(packagePath, func(f archiver.File) error {
+		if f.Name() == "youplus.json" {
+			raw, err := ioutil.ReadAll(f.ReadCloser)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(raw, conf)
+			if err != nil {
+				return err
+			}
+			return interruptErr
+		}
+		return nil
+	})
+	if err != nil && conf == nil {
+		return nil, err
+	}
+	return conf, nil
+}
+func CheckInstallPack(name string) (*UList, *BaseApp, error) {
+	packagePath := filepath.Join("./upload", name)
+	ulist, err := getListFromInstallPack(packagePath)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ulist.InstallScript == nil || ulist.UnInstallScript == nil {
+		return nil, nil, errors.New("invalidate install pack")
+	}
+	app, err := getConfigFromInstallPack(packagePath)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ulist, app, nil
+}
+func SaveInstallPack(name string) (*database.UploadInstallPack, error) {
+	pack := &database.UploadInstallPack{FileName: name}
+	err := database.Instance.Save(pack).Error
+	if err != nil {
+		return nil, err
+	}
+	return pack, nil
+}
+
 type InstallAppCallback struct {
 	OnDone  func(task *InstallAppTask)
 	OnError func(task *InstallAppTask)
@@ -270,7 +346,7 @@ func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCall
 	go func() {
 		uList := &UList{}
 		interruptErr := errors.New("interrupt")
-		z := archiver.Zip{
+		z := archiver.Tar{
 			OverwriteExisting: true,
 		}
 		err := z.Walk(packagePath, func(f archiver.File) error {
@@ -287,7 +363,7 @@ func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCall
 			}
 			return nil
 		})
-		if uList == nil && err != nil {
+		if err != nil && uList == nil {
 			task.OnError(err)
 			return
 		}
@@ -302,11 +378,10 @@ func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCall
 			task.OnError(err)
 			return
 		}
-		parts := strings.Split(uList.InstallScript, " ")
-		name := parts[0]
+		name := uList.InstallScript[0]
 		args := make([]string, 0)
-		if len(parts) > 1 {
-			args = parts[1:]
+		if len(uList.InstallScript) > 1 {
+			args = uList.InstallScript[1:]
 		}
 		cmd := exec.Command(name, args...)
 		cmd.Dir = workDir
@@ -368,11 +443,10 @@ func (p *TaskPool) NewUnInstallAppTask(appId string, callback UnInstallAppCallba
 			return
 		}
 		task.Extra.AppName = app.GetMeta().AppName
-		parts := strings.Split(uList.UnInstallScript, " ")
-		name := parts[0]
+		name := uList.UnInstallScript[0]
 		args := make([]string, 0)
-		if len(parts) > 1 {
-			args = parts[1:]
+		if len(uList.UnInstallScript) > 1 {
+			args = uList.UnInstallScript[1:]
 		}
 		cmd := exec.Command(name, args...)
 		cmd.Dir = app.GetMeta().Dir

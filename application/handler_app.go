@@ -1,12 +1,16 @@
 package application
 
 import (
+	"fmt"
 	"github.com/allentom/haruka"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
+	"github.com/rs/xid"
 	"io"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 var startAppHandler haruka.RequestHandler = func(context *haruka.Context) {
@@ -137,7 +141,7 @@ var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
 	}
-	file, handler, err := context.Request.FormFile("file")
+	file, _, err := context.Request.FormFile("file")
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
@@ -149,7 +153,8 @@ var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
-	packagePath := path.Join("./upload", handler.Filename)
+	packageName := fmt.Sprintf("%s.upk", xid.New().String())
+	packagePath := path.Join("./upload", packageName)
 	dst, err := os.Create(packagePath)
 	defer dst.Close()
 	if err != nil {
@@ -160,7 +165,33 @@ var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
-	task := service.DefaultTaskPool.NewInstallAppTask(packagePath, service.InstallAppCallback{
+	ulist, app, err := service.CheckInstallPack(packageName)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	pack, err := service.SaveInstallPack(packageName)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+		"id":      pack.ID,
+		"name":    ulist.Name,
+		"type":    ulist.InstallType,
+		"appName": app.AppName,
+	})
+}
+var installAppHandler haruka.RequestHandler = func(context *haruka.Context) {
+	id := context.GetQueryString("id")
+	var pack database.UploadInstallPack
+	err := database.Instance.Where("id = ?", id).Find(&pack).Error
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	task := service.DefaultTaskPool.NewInstallAppTask(filepath.Join("./upload", pack.FileName), service.InstallAppCallback{
 		OnDone: func(task *service.InstallAppTask) {
 			template := TaskTemplate{}
 			template.Assign(task)
