@@ -22,6 +22,7 @@ require (
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/kardianos/service v1.2.0
+	github.com/mackerelio/go-osstat v0.2.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/mholt/archiver/v3 v3.5.0
 	github.com/mitchellh/go-ps v1.0.0

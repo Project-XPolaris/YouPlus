@@ -40,6 +40,10 @@ func Program() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+
+	logger.Info("run monitor")
+	service.DefaultMonitor.Run()
+
 	logger.Info("load user")
 	err = service.DefaultUserManager.LoadUser()
 	if err != nil {

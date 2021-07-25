@@ -49,6 +49,7 @@ func RunApplication() {
 	e.Router.POST("/group/{name}/users", addUserToUserGroupHandler)
 	e.Router.POST("/account/password", changeAccountPasswordHandler)
 	e.Router.GET("/system/info", getSystemInfoHandler)
+	e.Router.GET("/system/monitor", getSystemMonitor)
 	e.Router.GET("/tasks", tasksListHandler)
 	e.Router.GET("/path/readdir", ReadDirHandler)
 	e.Router.GET("/path/realpath", GetRealPathHandler)
