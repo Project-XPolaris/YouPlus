@@ -35,6 +35,7 @@ func RunApplication() {
 	e.Router.GET("/storage", getStorageListHandler)
 	e.Router.DELETE("/storage", removeStorage)
 	e.Router.POST("/zpool", createZFSPoolHandler)
+	e.Router.POST("/zpool/conf", createZFSPoolWithNodeHandler)
 	e.Router.GET("/zpool", getZFSPoolListHandler)
 	e.Router.DELETE("/zpool", removePoolHandler)
 	e.Router.POST("/user/auth", generateAuthHandler)
