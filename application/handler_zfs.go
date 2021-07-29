@@ -19,7 +19,7 @@ var createZFSPoolHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
 	}
-	err = service.DefaultZFSManager.CreatePool(body.Name, body.Disks...)
+	err = service.DefaultZFSManager.CreateSimpleDiskPool(body.Name, body.Disks...)
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
@@ -29,6 +29,27 @@ var createZFSPoolHandler haruka.RequestHandler = func(context *haruka.Context) {
 	})
 }
 
+type CreateZFSPoolWithConfRequestBody struct {
+	Name string       `json:"name"`
+	Conf service.Node `json:"conf"`
+}
+
+var createZFSPoolWithNodeHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var body CreateZFSPoolWithConfRequestBody
+	err := context.ParseJson(&body)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.DefaultZFSManager.CreatePoolWithNode(body.Name, body.Conf)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
 var getZFSPoolListHandler haruka.RequestHandler = func(context *haruka.Context) {
 	data := make([]*ZFSPoolTemplate, 0)
 	pools, err := libzfs.PoolOpenAll()

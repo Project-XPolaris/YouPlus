@@ -14,7 +14,55 @@ var PoolNotFoundError = errors.New("target pool not found")
 type ZFSManager struct {
 }
 
-func (m *ZFSManager) CreatePool(name string, paths ...string) error {
+var VdevTypeMapping = map[string]libzfs.VDevType{
+	"disk":   libzfs.VDevTypeDisk,
+	"mirror": libzfs.VDevTypeMirror,
+	"raidz":  libzfs.VDevTypeRaidz,
+}
+
+type Node struct {
+	Type    string `json:"type"`
+	Path    string `json:"path"`
+	Devices []Node `json:"devices"`
+	Spares  []Node `json:"spares"`
+	L2      []Node `json:"l2"`
+}
+
+func ConvertNodeToVDevTree(node *Node, vdev *libzfs.VDevTree) {
+	vdev.Devices = []libzfs.VDevTree{}
+	for _, dev := range node.Devices {
+		devVdev := &libzfs.VDevTree{
+			Type: VdevTypeMapping[dev.Type],
+			Path: dev.Path,
+		}
+		ConvertNodeToVDevTree(&dev, devVdev)
+		vdev.Devices = append(vdev.Devices, *devVdev)
+	}
+	vdev.Spares = []libzfs.VDevTree{}
+	for _, dev := range node.Spares {
+		devVdev := &libzfs.VDevTree{
+			Type: VdevTypeMapping[dev.Type],
+			Path: dev.Path,
+		}
+		ConvertNodeToVDevTree(&dev, devVdev)
+		vdev.Spares = append(vdev.Spares, *devVdev)
+	}
+	vdev.L2Cache = []libzfs.VDevTree{}
+	for _, dev := range node.Spares {
+		devVdev := &libzfs.VDevTree{
+			Type: VdevTypeMapping[dev.Type],
+			Path: dev.Path,
+		}
+		ConvertNodeToVDevTree(&dev, devVdev)
+		vdev.Spares = append(vdev.L2Cache, *devVdev)
+	}
+}
+func (m *ZFSManager) CreatePoolWithNode(name string, rootNode Node) error {
+	rootVdev := libzfs.VDevTree{}
+	ConvertNodeToVDevTree(&rootNode, &rootVdev)
+	return m.CreatePool(name, rootVdev)
+}
+func (m *ZFSManager) CreateSimpleDiskPool(name string, paths ...string) error {
 	var vdev libzfs.VDevTree
 	var mdevs []libzfs.VDevTree
 	// build mirror devices specs
@@ -23,8 +71,11 @@ func (m *ZFSManager) CreatePool(name string, paths ...string) error {
 	}
 	// spare device specs
 	// pool specs
-
 	vdev.Devices = mdevs
+	err := m.CreatePool(name, vdev)
+	return err
+}
+func (m *ZFSManager) CreatePool(name string, vdev libzfs.VDevTree) error {
 	// pool properties
 	props := make(map[libzfs.Prop]string)
 	// root dataset filesystem properties
