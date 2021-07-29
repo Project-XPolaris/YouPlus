@@ -18,6 +18,7 @@ type AppConfig struct {
 	ApiKey     string `json:"api_key"`
 	YouSMBAddr string `json:"yousmb_addr"`
 	Fstab      string `json:"fstab"`
+	NetConfig  string `json:"net_config"`
 }
 
 func LoadAppConfig() error {

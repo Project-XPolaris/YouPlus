@@ -49,6 +49,11 @@ func Program() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	logger.Info("load network manager")
+	err = service.DefaultNetworkManager.Load()
+	if err != nil {
+		logger.Fatal(err)
+	}
 	// docker client
 	logger.Info("load docker")
 	err = service.InitDockerClient()

@@ -57,6 +57,7 @@ func RunApplication() {
 	e.Router.POST("/os/shutdown", shutdownHandler)
 	e.Router.POST("/os/reboot", rebootHandler)
 	e.Router.GET("/device/info", deviceInfoHandler)
+	e.Router.GET("/network", networkStatusHandler)
 	e.Router.AddHandler("/notification", notificationSocketHandler)
 	e.UseCors(cors.AllowAll())
 	e.UseMiddleware(middleware.NewJWTMiddleware(&middleware.NewJWTMiddlewareOption{

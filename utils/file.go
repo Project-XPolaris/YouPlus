@@ -34,3 +34,10 @@ func WriteLinesToFile(path string, lines []string) error {
 	}
 	return err
 }
+
+func IsFileExist(target string) bool {
+	if _, err := os.Stat(target); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
