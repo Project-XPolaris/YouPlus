@@ -73,11 +73,11 @@ type NetworkHardwareInfo struct {
 		Physical        string `json:"physical"`
 		Tp              string `json:"tp"`
 		Mii             string `json:"mii"`
-		One0Bt          string `json:"10bt"`
-		One0BtFd        string `json:"10bt-fd"`
-		One00Bt         string `json:"100bt"`
-		One00BtFd       string `json:"100bt-fd"`
-		One000BtFd      string `json:"1000bt-fd"`
+		TenBt           string `json:"10bt"`
+		TenBtFd         string `json:"10bt-fd"`
+		HundredBt       string `json:"100bt"`
+		HundredBtFd     string `json:"100bt-fd"`
+		ThousandBtFd    string `json:"1000bt-fd"`
 		Autonegotiation string `json:"autonegotiation"`
 	} `json:"capabilities"`
 }
