@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/projectxpolaris/youplus/netplan"
 	"github.com/projectxpolaris/youplus/utils"
@@ -12,7 +13,9 @@ import (
 )
 
 var DefaultNetworkManager = &NetworkManager{}
-var IgnoreNetworkName = []string{"lo"}
+var (
+	NetworkNotFoundError = errors.New("network interface not found")
+)
 
 type IPv4Config struct {
 	DHCP    bool     `json:"dhcp"`
@@ -108,27 +111,6 @@ func (m *NetworkManager) Init() error {
 	}
 	return nil
 }
-func getNetworkInterfaceList() ([]net.Interface, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-	result := make([]net.Interface, 0)
-	for _, iface := range ifaces {
-		isIgnore := false
-		for _, ignore := range IgnoreNetworkName {
-			if ignore == iface.Name {
-				isIgnore = true
-				break
-			}
-		}
-		if !isIgnore {
-			result = append(result, iface)
-		}
-
-	}
-	return result, nil
-}
 
 func (m *NetworkManager) GetHardwareInfo() ([]NetworkHardwareInfo, error) {
 	cmd := exec.Command("lshw", "-C", "network", "-json")
@@ -219,4 +201,59 @@ func (m *NetworkManager) Load() error {
 		}
 	}
 	return nil
+}
+func (m *NetworkManager) writeConfig() error {
+	netplanConf := netplan.NetPlanConf{Network: netplan.Network{
+		Renderer:  "NetworkManager",
+		Version:   "2",
+		Ethernets: map[string]netplan.Ethernet{},
+	}}
+	for _, iface := range m.Interfaces {
+		netConf := netplan.Ethernet{
+			DHCP4:       iface.IPv4.DHCP,
+			DHCP6:       iface.IPv6.DHCP,
+			Optional:    true,
+			Nameservers: netplan.Nameserver{},
+		}
+		if iface.IPv4.Address != nil {
+			netConf.Addresses = iface.IPv4.Address
+		}
+		if iface.IPv6.Address != nil {
+			netConf.Addresses = iface.IPv6.Address
+		}
+		netplanConf.Network.Ethernets[iface.Name] = netConf
+	}
+	err := utils.WriteYaml(netplanConf, config.Config.NetConfig)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *NetworkManager) getNetworkByName(name string) *NetworkInterface {
+	for _, networkInterface := range m.Interfaces {
+		if networkInterface.Name == name {
+			return networkInterface
+		}
+	}
+	return nil
+}
+
+func (m *NetworkManager) UpdateConfig(name string, ipv4 *IPv4Config, ipv6 *IPv6Config) error {
+	network := m.getNetworkByName(name)
+	if network == nil {
+		return NetworkNotFoundError
+	}
+	if ipv4 != nil {
+		network.IPv4 = *ipv4
+	}
+	if ipv6 != nil {
+		network.IPv6 = *ipv6
+	}
+	err := m.writeConfig()
+	if err != nil {
+		return err
+	}
+	err = m.Load()
+	return err
 }

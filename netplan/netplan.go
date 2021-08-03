@@ -7,9 +7,9 @@ type Network struct {
 }
 type Ethernet struct {
 	Addresses   []string   `yaml:"addresses,omitempty"`
-	DHCP4       bool       `yaml:"dhcp4,omitempty"`
-	DHCP6       bool       `yaml:"dhcp6,omitempty"`
-	Optional    bool       `yaml:"optional,omitempty"`
+	DHCP4       bool       `yaml:"dhcp4"`
+	DHCP6       bool       `yaml:"dhcp6"`
+	Optional    bool       `yaml:"optional"`
 	Gateway4    string     `yaml:"gateway4,omitempty"`
 	Gateway6    string     `yaml:"gateway6,omitempty"`
 	Nameservers Nameserver `yaml:"nameservers,omitempty"`

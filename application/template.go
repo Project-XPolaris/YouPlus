@@ -83,8 +83,10 @@ func (t *ZFSTreeTemplate) Assign(tree *libzfs.VDevTree) {
 }
 
 type StorageTemplate struct {
-	Id   string `json:"id"`
-	Type string `json:"type"`
+	Id    string `json:"id"`
+	Type  string `json:"type"`
+	Used  int64  `json:"used"`
+	Total int64  `json:"total"`
 }
 
 func (t *StorageTemplate) Assign(storage service.Storage) {
@@ -95,6 +97,7 @@ func (t *StorageTemplate) Assign(storage service.Storage) {
 	case *service.ZFSPoolStorage:
 		t.Type = "ZFSPool"
 	}
+	t.Used, t.Total, _ = storage.GetUsage()
 }
 
 type ShareFolderUsers struct {
@@ -135,4 +138,29 @@ func (t *UserGroupTemplate) Assign(group *service.SystemUserGroup) {
 	} else {
 		t.Type = "normal"
 	}
+}
+
+type DatasetTemplate struct {
+	Pool          string `json:"pool"`
+	Path          string `json:"path"`
+	SnapshotCount int    `json:"snapshotCount,omitempty"`
+}
+
+func (t *DatasetTemplate) Assign(dataset *libzfs.Dataset) {
+	t.Pool = dataset.PoolName()
+	t.Path, _ = dataset.Path()
+	snapshots, err := dataset.Snapshots()
+	if err == nil {
+		t.SnapshotCount = len(snapshots)
+	}
+}
+
+func SerializerDatasetTemplates(datasets []libzfs.Dataset) []DatasetTemplate {
+	data := make([]DatasetTemplate, 0)
+	for _, dataset := range datasets {
+		template := DatasetTemplate{}
+		template.Assign(&dataset)
+		data = append(data, template)
+	}
+	return data
 }

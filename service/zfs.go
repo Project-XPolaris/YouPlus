@@ -2,10 +2,8 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	libzfs "github.com/bicomsystems/go-libzfs"
-	"github.com/projectxpolaris/youplus/database"
-	"github.com/rs/xid"
-	"path"
 )
 
 var DefaultZFSManager = ZFSManager{}
@@ -131,46 +129,79 @@ func (m *ZFSManager) RemovePool(name string) error {
 	return nil
 }
 
-type ZFSPoolStorage struct {
-	Id         string `json:"id"`
-	Name       string `json:"name"`
-	MountPoint string `json:"mount_point"`
+func (m *ZFSManager) GetDatasetList() ([]libzfs.Dataset, error) {
+	return libzfs.DatasetOpenAll()
+}
+func (m *ZFSManager) CloseAllDataset(datasets []libzfs.Dataset) {
+	libzfs.DatasetCloseAll(datasets)
+}
+func (m *ZFSManager) CreateDataset(datasetPath string) (dataset libzfs.Dataset, err error) {
+	return libzfs.DatasetCreate(datasetPath, libzfs.DatasetTypeFilesystem, nil)
 }
 
-func (z *ZFSPoolStorage) SaveData() error {
-	rawData := map[string]interface{}{}
-	rawData["Name"] = z.Name
-	rawData["MountPoint"] = z.MountPoint
-	return database.Instance.Model(&database.ZFSStorage{}).Where("id = ?", z.Id).Updates(rawData).Error
-}
-
-func (z *ZFSPoolStorage) GetRootPath() string {
-	return z.MountPoint
-}
-
-func (z *ZFSPoolStorage) GetId() string {
-	return z.Id
-}
-
-func (z *ZFSPoolStorage) Remove() error {
-	return database.Instance.Model(&database.ZFSStorage{}).Unscoped().Delete(&database.ZFSStorage{ID: z.Id}).Error
-}
-
-func (z *ZFSPoolStorage) LoadFromSave(data *database.ZFSStorage) {
-	z.Id = data.ID
-	z.Name = data.Name
-	z.MountPoint = data.MountPoint
-}
-
-func CreateZFSStorage(poolName string) (Storage, error) {
-	s := &ZFSPoolStorage{
-		Id:         xid.New().String(),
-		Name:       path.Base(poolName),
-		MountPoint: poolName,
+func (m *ZFSManager) DeleteDataset(datasetPath string) error {
+	dataset, err := libzfs.DatasetOpen(datasetPath)
+	if err != nil {
+		return err
 	}
-	err := database.Instance.Save(&database.ZFSStorage{ID: s.Id, Name: s.Name, MountPoint: s.MountPoint}).Error
+	err = dataset.DestroyRecursive()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *ZFSManager) CreateSnapshot(datasetPath string, snapshotName string) (libzfs.Dataset, error) {
+	return libzfs.DatasetSnapshot(fmt.Sprintf("%s@%s", datasetPath, snapshotName), false, nil)
+}
+
+func (m *ZFSManager) GetDatasetSnapshotList(datasetPath string) ([]libzfs.Dataset, error) {
+	dataset, err := libzfs.DatasetOpen(datasetPath)
 	if err != nil {
 		return nil, err
 	}
-	return s, nil
+	return dataset.Snapshots()
+}
+
+func (m *ZFSManager) DatasetRollback(datasetPath string, snapshotName string) error {
+	dataset, err := libzfs.DatasetOpen(datasetPath)
+	if err != nil {
+		return err
+	}
+	snapshot, err := libzfs.DatasetOpen(fmt.Sprintf("%s@%s", datasetPath, snapshotName))
+	if err != nil {
+		return err
+	}
+	return dataset.Rollback(&snapshot, true)
+}
+
+func (m *ZFSManager) DeleteSnapshot(datasetPath string, snapshotName string) error {
+	dataset, err := libzfs.DatasetOpen(fmt.Sprintf("%s@%s", datasetPath, snapshotName))
+	if err != nil {
+		return err
+	}
+	return dataset.Destroy(true)
+}
+
+func (m *ZFSManager) GetAllDataset() ([]libzfs.Dataset, error) {
+	queue, err := libzfs.DatasetOpenAll()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]libzfs.Dataset, 0)
+	for len(queue) != 0 {
+		dataset := queue[0]
+		if !dataset.IsSnapshot() {
+			result = append(result, dataset)
+			if dataset.Children != nil {
+				queue = append(queue, dataset.Children...)
+			}
+		}
+		if len(queue) > 0 {
+			queue = queue[1:]
+		} else {
+			queue = []libzfs.Dataset{}
+		}
+	}
+	return result, nil
 }

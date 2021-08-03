@@ -11,3 +11,12 @@ var networkStatusHandler haruka.RequestHandler = func(context *haruka.Context) {
 		"networks": service.DefaultNetworkManager.Interfaces,
 	})
 }
+
+type UpdateNetworkConfigRequestBody struct {
+	IPv4 *service.IPv4Config `json:"ipv4"`
+	IPv6 *service.IPv6Config `json:"ipv6"`
+}
+
+var updateNetworkConfig haruka.RequestHandler = func(context *haruka.Context) {
+
+}

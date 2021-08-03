@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/rs/xid"
+	"github.com/shirou/gopsutil/disk"
 	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
@@ -114,6 +115,7 @@ type Storage interface {
 	Remove() error
 	SaveData() error
 	GetRootPath() string
+	GetUsage() (used int64, free int64, err error)
 }
 
 type DiskPartStorage struct {
@@ -163,6 +165,17 @@ func (s *DiskPartStorage) Remove() error {
 		return err
 	}
 	return nil
+}
+func (s *DiskPartStorage) GetUsage() (used int64, free int64, err error) {
+	part := GetPartByName(s.Source)
+	if part == nil {
+		return 0, 0, errors.New("unknown fs type")
+	}
+	stat, err := disk.Usage(s.Source)
+	if err != nil {
+		return 0, 0, err
+	}
+	return int64(stat.Used), int64(stat.Total), err
 }
 
 func NewDiskPartStorage(source string) (Storage, error) {
