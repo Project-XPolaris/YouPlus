@@ -146,9 +146,12 @@ func (m *AddressConverterManager) GetRealPath(target string, username string) (s
 	if entity == nil {
 		return "", PathNotFoundError
 	}
-	if _, exist := entity.AccessUsers[username]; !exist {
-		return "", PathNotAccessible
+	if !entity.Public {
+		if _, exist := entity.AccessUsers[username]; !exist {
+			return "", PathNotAccessible
+		}
 	}
+
 	realPath := filepath.Join(entity.Path, filepath.Join(pathParts[1:]...))
 	return realPath, nil
 }

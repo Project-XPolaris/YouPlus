@@ -6,6 +6,7 @@ import (
 	"github.com/projectxpolaris/youplus/application"
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/projectxpolaris/youplus/database"
+	rpc "github.com/projectxpolaris/youplus/rpc"
 	"github.com/projectxpolaris/youplus/service"
 	"github.com/projectxpolaris/youplus/yousmb"
 	"github.com/sirupsen/logrus"
@@ -93,6 +94,9 @@ func Program() {
 	} else {
 		logger.Fatal(errors.New("SMB service check [not pass]"))
 	}
+	go func() {
+		rpc.DefaultRPCServer.Run()
+	}()
 	application.RunApplication()
 }
 

@@ -83,7 +83,7 @@ var removePoolHandler haruka.RequestHandler = func(context *haruka.Context) {
 }
 
 var datasetListHandler haruka.RequestHandler = func(context *haruka.Context) {
-	datasets, err := service.DefaultZFSManager.GetDatasetList()
+	datasets, err := service.DefaultZFSManager.GetAllDataset()
 	if err != nil {
 		AbortErrorWithStatus(err, context, 500)
 		return

@@ -3,5 +3,6 @@
   "api_key": "youplus_api_key",
   "yousmb_addr": "http://localhost:8200",
   "fstab": "./fstab",
-  "net_config": "/etc/netplan/youplus.yaml"
+  "net_config": "/etc/netplan/youplus.yaml",
+  "rpc_addr": ":50055"
 }

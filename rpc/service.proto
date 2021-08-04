@@ -1,0 +1,47 @@
+service Service {
+  rpc CheckDataset (CheckDatasetRequest) returns (CheckDatasetReply) {}
+  rpc GetDatasetInfo (GetDatasetInfoRequest) returns (GetDatasetInfoReply) {}
+  rpc CreateDataset (CreateDatasetRequest) returns (ActionReply) {}
+  rpc DeleteDataset (DeleteDatasetRequest) returns (ActionReply) {}
+  rpc CreateSnapshot (CreateSnapshotRequest) returns (ActionReply) {}
+  rpc DeleteSnapshot (DeleteSnapshotRequest) returns (ActionReply) {}
+}
+
+message CheckDatasetRequest {
+  required string path = 1;
+}
+
+message CheckDatasetReply {
+  required bool isDataset = 1;
+}
+
+message CreateDatasetRequest {
+  required string path = 1;
+}
+message DeleteDatasetRequest {
+  required string path = 1;
+}
+message CreateSnapshotRequest {
+  required string dataset = 1;
+  required  string snapshot = 2;
+}
+message DeleteSnapshotRequest {
+  required string dataset = 1;
+  required  string snapshot = 2;
+}
+
+message ActionReply {
+  required bool success = 1;
+  optional bool reason = 2;
+}
+
+message GetDatasetInfoRequest {
+  required string dataset = 1;
+}
+message Snapshot {
+  required string name = 1;
+}
+message GetDatasetInfoReply {
+  required string path = 1;
+  repeated Snapshot snapshots = 2;
+}
