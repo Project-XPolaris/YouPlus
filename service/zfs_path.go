@@ -12,7 +12,7 @@ func (m *ZFSManager) PathToZFSPath(path string) (string, error) {
 	}
 	for _, dataset := range datasets {
 		mountPointProp := dataset.Properties[libzfs.DatasetPropMountpoint]
-		if strings.HasPrefix(path, mountPointProp.Value+"/") {
+		if strings.HasPrefix(path, mountPointProp.Value+"/") || mountPointProp.Value == path {
 			return strings.Replace(path, mountPointProp.Value, dataset.PoolName(), 1), nil
 		}
 	}

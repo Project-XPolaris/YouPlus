@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/projectxpolaris/youplus/service"
 	"google.golang.org/grpc"
@@ -49,6 +50,9 @@ func (s Server) GetDatasetInfo(ctx context.Context, in *GetDatasetInfoRequest) (
 	dataset, err := service.DefaultZFSManager.GetDatasetByPath(*in.Dataset)
 	if err != nil {
 		return nil, err
+	}
+	if dataset == nil {
+		return nil, errors.New("not a dataset")
 	}
 	snapshots, err := dataset.Snapshots()
 	if err != nil {
