@@ -318,6 +318,61 @@ func (x *DeleteSnapshotRequest) GetSnapshot() string {
 	return ""
 }
 
+type RollbackDatasetRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Dataset  *string `protobuf:"bytes,1,req,name=dataset" json:"dataset,omitempty"`
+	Snapshot *string `protobuf:"bytes,2,req,name=snapshot" json:"snapshot,omitempty"`
+}
+
+func (x *RollbackDatasetRequest) Reset() {
+	*x = RollbackDatasetRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_service_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RollbackDatasetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RollbackDatasetRequest) ProtoMessage() {}
+
+func (x *RollbackDatasetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_service_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RollbackDatasetRequest.ProtoReflect.Descriptor instead.
+func (*RollbackDatasetRequest) Descriptor() ([]byte, []int) {
+	return file_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RollbackDatasetRequest) GetDataset() string {
+	if x != nil && x.Dataset != nil {
+		return *x.Dataset
+	}
+	return ""
+}
+
+func (x *RollbackDatasetRequest) GetSnapshot() string {
+	if x != nil && x.Snapshot != nil {
+		return *x.Snapshot
+	}
+	return ""
+}
+
 type ActionReply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -330,7 +385,7 @@ type ActionReply struct {
 func (x *ActionReply) Reset() {
 	*x = ActionReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_service_proto_msgTypes[6]
+		mi := &file_service_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -343,7 +398,7 @@ func (x *ActionReply) String() string {
 func (*ActionReply) ProtoMessage() {}
 
 func (x *ActionReply) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[6]
+	mi := &file_service_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -356,7 +411,7 @@ func (x *ActionReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActionReply.ProtoReflect.Descriptor instead.
 func (*ActionReply) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{6}
+	return file_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ActionReply) GetSuccess() bool {
@@ -384,7 +439,7 @@ type GetDatasetInfoRequest struct {
 func (x *GetDatasetInfoRequest) Reset() {
 	*x = GetDatasetInfoRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_service_proto_msgTypes[7]
+		mi := &file_service_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -397,7 +452,7 @@ func (x *GetDatasetInfoRequest) String() string {
 func (*GetDatasetInfoRequest) ProtoMessage() {}
 
 func (x *GetDatasetInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[7]
+	mi := &file_service_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -410,7 +465,7 @@ func (x *GetDatasetInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDatasetInfoRequest.ProtoReflect.Descriptor instead.
 func (*GetDatasetInfoRequest) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{7}
+	return file_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetDatasetInfoRequest) GetDataset() string {
@@ -431,7 +486,7 @@ type Snapshot struct {
 func (x *Snapshot) Reset() {
 	*x = Snapshot{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_service_proto_msgTypes[8]
+		mi := &file_service_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -444,7 +499,7 @@ func (x *Snapshot) String() string {
 func (*Snapshot) ProtoMessage() {}
 
 func (x *Snapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[8]
+	mi := &file_service_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -457,7 +512,7 @@ func (x *Snapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Snapshot.ProtoReflect.Descriptor instead.
 func (*Snapshot) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{8}
+	return file_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Snapshot) GetName() string {
@@ -479,7 +534,7 @@ type GetDatasetInfoReply struct {
 func (x *GetDatasetInfoReply) Reset() {
 	*x = GetDatasetInfoReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_service_proto_msgTypes[9]
+		mi := &file_service_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -492,7 +547,7 @@ func (x *GetDatasetInfoReply) String() string {
 func (*GetDatasetInfoReply) ProtoMessage() {}
 
 func (x *GetDatasetInfoReply) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[9]
+	mi := &file_service_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +560,7 @@ func (x *GetDatasetInfoReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDatasetInfoReply.ProtoReflect.Descriptor instead.
 func (*GetDatasetInfoReply) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{9}
+	return file_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetDatasetInfoReply) GetPath() string {
@@ -547,6 +602,11 @@ var file_service_proto_rawDesc = []byte{
 	0x07, 0x64, 0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x18, 0x01, 0x20, 0x02, 0x28, 0x09, 0x52, 0x07,
 	0x64, 0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x73, 0x6e, 0x61, 0x70, 0x73,
 	0x68, 0x6f, 0x74, 0x18, 0x02, 0x20, 0x02, 0x28, 0x09, 0x52, 0x08, 0x73, 0x6e, 0x61, 0x70, 0x73,
+	0x68, 0x6f, 0x74, 0x22, 0x4e, 0x0a, 0x16, 0x52, 0x6f, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x44,
+	0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a,
+	0x07, 0x64, 0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x18, 0x01, 0x20, 0x02, 0x28, 0x09, 0x52, 0x07,
+	0x64, 0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x73, 0x6e, 0x61, 0x70, 0x73,
+	0x68, 0x6f, 0x74, 0x18, 0x02, 0x20, 0x02, 0x28, 0x09, 0x52, 0x08, 0x73, 0x6e, 0x61, 0x70, 0x73,
 	0x68, 0x6f, 0x74, 0x22, 0x3f, 0x0a, 0x0b, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x70,
 	0x6c, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20,
 	0x02, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x16, 0x0a, 0x06,
@@ -561,7 +621,7 @@ var file_service_proto_rawDesc = []byte{
 	0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x02, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61,
 	0x74, 0x68, 0x12, 0x27, 0x0a, 0x09, 0x73, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x73, 0x18,
 	0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x09, 0x2e, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74,
-	0x52, 0x09, 0x73, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x73, 0x32, 0xeb, 0x02, 0x0a, 0x07,
+	0x52, 0x09, 0x73, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x73, 0x32, 0xa7, 0x03, 0x0a, 0x07,
 	0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x3a, 0x0a, 0x0c, 0x43, 0x68, 0x65, 0x63, 0x6b,
 	0x44, 0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x12, 0x14, 0x2e, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x44,
 	0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x12, 0x2e,
@@ -584,7 +644,11 @@ var file_service_proto_rawDesc = []byte{
 	0x38, 0x0a, 0x0e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f,
 	0x74, 0x12, 0x16, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68,
 	0x6f, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0c, 0x2e, 0x41, 0x63, 0x74, 0x69,
-	0x6f, 0x6e, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00,
+	0x6f, 0x6e, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3a, 0x0a, 0x0f, 0x52, 0x6f, 0x6c,
+	0x6c, 0x62, 0x61, 0x63, 0x6b, 0x44, 0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x12, 0x17, 0x2e, 0x52,
+	0x6f, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x44, 0x61, 0x74, 0x61, 0x73, 0x65, 0x74, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0c, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65,
+	0x70, 0x6c, 0x79, 0x22, 0x00,
 }
 
 var (
@@ -599,38 +663,41 @@ func file_service_proto_rawDescGZIP() []byte {
 	return file_service_proto_rawDescData
 }
 
-var file_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_service_proto_goTypes = []interface{}{
-	(*CheckDatasetRequest)(nil),   // 0: CheckDatasetRequest
-	(*CheckDatasetReply)(nil),     // 1: CheckDatasetReply
-	(*CreateDatasetRequest)(nil),  // 2: CreateDatasetRequest
-	(*DeleteDatasetRequest)(nil),  // 3: DeleteDatasetRequest
-	(*CreateSnapshotRequest)(nil), // 4: CreateSnapshotRequest
-	(*DeleteSnapshotRequest)(nil), // 5: DeleteSnapshotRequest
-	(*ActionReply)(nil),           // 6: ActionReply
-	(*GetDatasetInfoRequest)(nil), // 7: GetDatasetInfoRequest
-	(*Snapshot)(nil),              // 8: Snapshot
-	(*GetDatasetInfoReply)(nil),   // 9: GetDatasetInfoReply
+	(*CheckDatasetRequest)(nil),    // 0: CheckDatasetRequest
+	(*CheckDatasetReply)(nil),      // 1: CheckDatasetReply
+	(*CreateDatasetRequest)(nil),   // 2: CreateDatasetRequest
+	(*DeleteDatasetRequest)(nil),   // 3: DeleteDatasetRequest
+	(*CreateSnapshotRequest)(nil),  // 4: CreateSnapshotRequest
+	(*DeleteSnapshotRequest)(nil),  // 5: DeleteSnapshotRequest
+	(*RollbackDatasetRequest)(nil), // 6: RollbackDatasetRequest
+	(*ActionReply)(nil),            // 7: ActionReply
+	(*GetDatasetInfoRequest)(nil),  // 8: GetDatasetInfoRequest
+	(*Snapshot)(nil),               // 9: Snapshot
+	(*GetDatasetInfoReply)(nil),    // 10: GetDatasetInfoReply
 }
 var file_service_proto_depIdxs = []int32{
-	8, // 0: GetDatasetInfoReply.snapshots:type_name -> Snapshot
-	0, // 1: Service.CheckDataset:input_type -> CheckDatasetRequest
-	7, // 2: Service.GetDatasetInfo:input_type -> GetDatasetInfoRequest
-	2, // 3: Service.CreateDataset:input_type -> CreateDatasetRequest
-	3, // 4: Service.DeleteDataset:input_type -> DeleteDatasetRequest
-	4, // 5: Service.CreateSnapshot:input_type -> CreateSnapshotRequest
-	5, // 6: Service.DeleteSnapshot:input_type -> DeleteSnapshotRequest
-	1, // 7: Service.CheckDataset:output_type -> CheckDatasetReply
-	9, // 8: Service.GetDatasetInfo:output_type -> GetDatasetInfoReply
-	6, // 9: Service.CreateDataset:output_type -> ActionReply
-	6, // 10: Service.DeleteDataset:output_type -> ActionReply
-	6, // 11: Service.CreateSnapshot:output_type -> ActionReply
-	6, // 12: Service.DeleteSnapshot:output_type -> ActionReply
-	7, // [7:13] is the sub-list for method output_type
-	1, // [1:7] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	9,  // 0: GetDatasetInfoReply.snapshots:type_name -> Snapshot
+	0,  // 1: Service.CheckDataset:input_type -> CheckDatasetRequest
+	8,  // 2: Service.GetDatasetInfo:input_type -> GetDatasetInfoRequest
+	2,  // 3: Service.CreateDataset:input_type -> CreateDatasetRequest
+	3,  // 4: Service.DeleteDataset:input_type -> DeleteDatasetRequest
+	4,  // 5: Service.CreateSnapshot:input_type -> CreateSnapshotRequest
+	5,  // 6: Service.DeleteSnapshot:input_type -> DeleteSnapshotRequest
+	6,  // 7: Service.RollbackDataset:input_type -> RollbackDatasetRequest
+	1,  // 8: Service.CheckDataset:output_type -> CheckDatasetReply
+	10, // 9: Service.GetDatasetInfo:output_type -> GetDatasetInfoReply
+	7,  // 10: Service.CreateDataset:output_type -> ActionReply
+	7,  // 11: Service.DeleteDataset:output_type -> ActionReply
+	7,  // 12: Service.CreateSnapshot:output_type -> ActionReply
+	7,  // 13: Service.DeleteSnapshot:output_type -> ActionReply
+	7,  // 14: Service.RollbackDataset:output_type -> ActionReply
+	8,  // [8:15] is the sub-list for method output_type
+	1,  // [1:8] is the sub-list for method input_type
+	1,  // [1:1] is the sub-list for extension type_name
+	1,  // [1:1] is the sub-list for extension extendee
+	0,  // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_service_proto_init() }
@@ -712,7 +779,7 @@ func file_service_proto_init() {
 			}
 		}
 		file_service_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ActionReply); i {
+			switch v := v.(*RollbackDatasetRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -724,7 +791,7 @@ func file_service_proto_init() {
 			}
 		}
 		file_service_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetDatasetInfoRequest); i {
+			switch v := v.(*ActionReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -736,7 +803,7 @@ func file_service_proto_init() {
 			}
 		}
 		file_service_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Snapshot); i {
+			switch v := v.(*GetDatasetInfoRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -748,6 +815,18 @@ func file_service_proto_init() {
 			}
 		}
 		file_service_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Snapshot); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_service_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetDatasetInfoReply); i {
 			case 0:
 				return &v.state
@@ -766,7 +845,7 @@ func file_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_service_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

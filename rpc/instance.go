@@ -125,3 +125,16 @@ func (s Server) DeleteSnapshot(ctx context.Context, in *DeleteSnapshotRequest) (
 	success := true
 	return &ActionReply{Success: &success}, nil
 }
+
+func (s Server) RollbackDataset(ctx context.Context, in *RollbackDatasetRequest) (*ActionReply, error) {
+	datasetPath, err := service.DefaultZFSManager.PathToZFSPath(*in.Dataset)
+	if err != nil {
+		return nil, err
+	}
+	err = service.DefaultZFSManager.DatasetRollback(datasetPath, *in.Snapshot)
+	if err != nil {
+		return nil, err
+	}
+	success := true
+	return &ActionReply{Success: &success}, nil
+}

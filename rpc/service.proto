@@ -5,6 +5,7 @@ service Service {
   rpc DeleteDataset (DeleteDatasetRequest) returns (ActionReply) {}
   rpc CreateSnapshot (CreateSnapshotRequest) returns (ActionReply) {}
   rpc DeleteSnapshot (DeleteSnapshotRequest) returns (ActionReply) {}
+  rpc RollbackDataset (RollbackDatasetRequest) returns (ActionReply) {}
 }
 
 message CheckDatasetRequest {
@@ -26,6 +27,10 @@ message CreateSnapshotRequest {
   required  string snapshot = 2;
 }
 message DeleteSnapshotRequest {
+  required string dataset = 1;
+  required  string snapshot = 2;
+}
+message RollbackDatasetRequest {
   required string dataset = 1;
   required  string snapshot = 2;
 }
