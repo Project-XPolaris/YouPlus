@@ -72,6 +72,14 @@ func (m *UserManager) GetGroupByName(name string) *SystemUserGroup {
 	}
 	return nil
 }
+func (m *UserManager) GetGroupById(gid string) *SystemUserGroup {
+	for _, group := range m.Groups {
+		if group.Gid == gid {
+			return group
+		}
+	}
+	return nil
+}
 func (m *UserManager) GetGroups() (groups []*SystemUserGroup, err error) {
 	saveGroups := make([]database.UserGroup, 0)
 	err = database.Instance.Find(&saveGroups).Error

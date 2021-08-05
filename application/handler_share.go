@@ -139,6 +139,11 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 			})
 		}
 		template.WriteUsers = writeUsers
+		template.ValidGroups = SerializeGroups(shareFolderConfig.ValidGroups)
+		template.InvalidGroups = SerializeGroups(shareFolderConfig.InvalidGroups)
+		template.ReadGroups = SerializeGroups(shareFolderConfig.ReadGroups)
+		template.WriteGroups = SerializeGroups(shareFolderConfig.WriteGroups)
+
 		shareFolders = append(shareFolders, template)
 	}
 	context.JSON(haruka.JSON{

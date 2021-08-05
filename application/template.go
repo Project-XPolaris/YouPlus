@@ -2,6 +2,7 @@ package application
 
 import (
 	libzfs "github.com/bicomsystems/go-libzfs"
+	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
 )
 
@@ -105,18 +106,22 @@ type ShareFolderUsers struct {
 	Name string `json:"name"`
 }
 type ShareFolderTemplate struct {
-	Id           uint                    `json:"id"`
-	Name         string                  `json:"name"`
-	Storage      StorageTemplate         `json:"storage,omitempty"`
-	ValidUsers   []ShareFolderUsers      `json:"validUsers"`
-	InvalidUsers []ShareFolderUsers      `json:"invalidUsers"`
-	ReadUsers    []ShareFolderUsers      `json:"readUsers,omitempty"`
-	WriteUsers   []ShareFolderUsers      `json:"writeUsers,omitempty"`
-	Enable       bool                    `json:"enable"`
-	Public       bool                    `json:"public"`
-	Readonly     bool                    `json:"readonly"`
-	Guest        service.UserShareFolder `json:"guest"`
-	Other        service.UserShareFolder `json:"other"`
+	Id            uint                    `json:"id"`
+	Name          string                  `json:"name"`
+	Storage       StorageTemplate         `json:"storage,omitempty"`
+	ValidUsers    []ShareFolderUsers      `json:"validUsers"`
+	InvalidUsers  []ShareFolderUsers      `json:"invalidUsers"`
+	ReadUsers     []ShareFolderUsers      `json:"readUsers,omitempty"`
+	WriteUsers    []ShareFolderUsers      `json:"writeUsers,omitempty"`
+	ValidGroups   []*UserGroupTemplate    `json:"validGroups"`
+	InvalidGroups []*UserGroupTemplate    `json:"invalidGroups"`
+	ReadGroups    []*UserGroupTemplate    `json:"readGroups,omitempty"`
+	WriteGroups   []*UserGroupTemplate    `json:"writeGroups,omitempty"`
+	Enable        bool                    `json:"enable"`
+	Public        bool                    `json:"public"`
+	Readonly      bool                    `json:"readonly"`
+	Guest         service.UserShareFolder `json:"guest"`
+	Other         service.UserShareFolder `json:"other"`
 }
 
 type UserTemplate struct {
@@ -138,6 +143,19 @@ func (t *UserGroupTemplate) Assign(group *service.SystemUserGroup) {
 	} else {
 		t.Type = "normal"
 	}
+}
+func SerializeGroups(groups []*database.UserGroup) []*UserGroupTemplate {
+	data := make([]*UserGroupTemplate, 0)
+	for _, group := range groups {
+		systemGroup := service.DefaultUserManager.GetGroupById(group.Gid)
+		if systemGroup == nil {
+			continue
+		}
+		template := UserGroupTemplate{}
+		template.Assign(systemGroup)
+		data = append(data, &template)
+	}
+	return data
 }
 
 type DatasetTemplate struct {

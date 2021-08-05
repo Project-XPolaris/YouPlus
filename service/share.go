@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/utils"
 	"github.com/projectxpolaris/youplus/yousmb"
@@ -58,15 +59,28 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 	}
 	return nil
 }
-func getSMBUserList(list []*database.User) []string {
-	userList := make([]string, 0)
-	if list == nil {
-		return userList
+func getSMBUserAndUserGroupList(users []*database.User, groups []*database.UserGroup) []string {
+	list := make([]string, 0)
+	if users == nil && groups == nil {
+		return list
 	}
-	for _, user := range list {
-		userList = append(userList, user.Username)
+	if users != nil {
+		for _, user := range users {
+			list = append(list, user.Username)
+		}
 	}
-	return userList
+
+	if groups != nil {
+		for _, group := range groups {
+			systemGroup := DefaultUserManager.GetGroupById(group.Gid)
+			if systemGroup == nil {
+				continue
+			}
+			list = append(list, fmt.Sprintf("@%s", systemGroup.Name))
+		}
+	}
+
+	return list
 }
 func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 	properties := map[string]interface{}{
@@ -77,10 +91,10 @@ func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 		"available":      utils.GetSmbBoolText(folder.Enable),
 		"browseable":     "yes",
 		"public":         utils.GetSmbBoolText(folder.Public),
-		"valid users":    strings.Join(getSMBUserList(folder.ValidUsers), ","),
-		"invalid users":  strings.Join(getSMBUserList(folder.InvalidUsers), ","),
-		"read list":      strings.Join(getSMBUserList(folder.ReadUsers), ","),
-		"write list":     strings.Join(getSMBUserList(folder.WriteUsers), ","),
+		"valid users":    strings.Join(getSMBUserAndUserGroupList(folder.ValidUsers, folder.ValidGroups), ","),
+		"invalid users":  strings.Join(getSMBUserAndUserGroupList(folder.InvalidUsers, folder.InvalidGroups), ","),
+		"read list":      strings.Join(getSMBUserAndUserGroupList(folder.ReadUsers, folder.ReadGroups), ","),
+		"write list":     strings.Join(getSMBUserAndUserGroupList(folder.WriteUsers, folder.WriteGroups), ","),
 	}
 	if folder.Public {
 		properties["public"] = "yes"
@@ -104,7 +118,16 @@ func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 }
 func GetShareFolders() ([]*database.ShareFolder, error) {
 	var folders []*database.ShareFolder
-	err := database.Instance.Preload("ValidUsers").Preload("InvalidUsers").Preload("ReadUsers").Preload("WriteUsers").Find(&folders).Error
+	err := database.Instance.
+		Preload("ValidUsers").
+		Preload("InvalidUsers").
+		Preload("ReadUsers").
+		Preload("WriteUsers").
+		Preload("ValidGroups").
+		Preload("InvalidGroups").
+		Preload("ReadGroups").
+		Preload("WriteGroups").
+		Find(&folders).Error
 	if err != nil {
 		return nil, err
 	}
@@ -117,17 +140,6 @@ func GetShareFolderCount() (int64, error) {
 		return 0, err
 	}
 	return count, nil
-}
-
-type UpdateShareFolderOption struct {
-	Name         string   `json:"name"`
-	ReadUsers    []string `json:"readUsers"`
-	WriteUsers   []string `json:"writeUsers"`
-	ValidUsers   []string `json:"validUsers"`
-	InvalidUsers []string `json:"invalidUsers"`
-	Public       bool     `json:"public"`
-	Readonly     bool     `json:"readonly"`
-	Enable       bool     `json:"enable"`
 }
 
 func putFolderUserList(folder *database.ShareFolder, usernameList []string, rel string) error {
@@ -146,6 +158,46 @@ func putFolderUserList(folder *database.ShareFolder, usernameList []string, rel 
 	}
 	return nil
 }
+func putFolderGroupList(folder *database.ShareFolder, groupNameList []string, rel string) error {
+	var groups []*database.UserGroup
+	groupIds := make([]string, 0)
+	for _, name := range groupNameList {
+		group := DefaultUserManager.GetUserGroupByName(name)
+		if group == nil {
+			continue
+		}
+		groupIds = append(groupIds, group.Gid)
+	}
+	err := database.Instance.Where("gid in ?", groupIds).Find(&groups).Error
+	if err != nil {
+		return err
+	}
+	err = database.Instance.Model(folder).Association(rel).Clear()
+	if err != nil {
+		return err
+	}
+	err = database.Instance.Model(folder).Association(rel).Append(groups)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type UpdateShareFolderOption struct {
+	Name          string   `json:"name"`
+	ReadUsers     []string `json:"readUsers"`
+	WriteUsers    []string `json:"writeUsers"`
+	ValidUsers    []string `json:"validUsers"`
+	InvalidUsers  []string `json:"invalidUsers"`
+	ReadGroups    []string `json:"readGroups"`
+	WriteGroups   []string `json:"writeGroups"`
+	ValidGroups   []string `json:"validGroups"`
+	InvalidGroups []string `json:"invalidGroups"`
+	Public        *bool    `json:"public"`
+	Readonly      *bool    `json:"readonly"`
+	Enable        *bool    `json:"enable"`
+}
+
 func UpdateSMBConfig(option *UpdateShareFolderOption) error {
 	var folder database.ShareFolder
 	err := database.Instance.Where("name = ?", option.Name).
@@ -153,6 +205,10 @@ func UpdateSMBConfig(option *UpdateShareFolderOption) error {
 		Preload("InvalidUsers").
 		Preload("ReadUsers").
 		Preload("WriteUsers").
+		Preload("ValidGroups").
+		Preload("InvalidGroups").
+		Preload("ReadGroups").
+		Preload("WriteGroups").
 		First(&folder).
 		Error
 	if err != nil {
@@ -182,9 +238,39 @@ func UpdateSMBConfig(option *UpdateShareFolderOption) error {
 			return err
 		}
 	}
-	folder.Public = option.Public
-	folder.Enable = option.Enable
-	folder.Readonly = option.Readonly
+	if option.ValidGroups != nil {
+		err = putFolderGroupList(&folder, option.ValidGroups, "ValidGroups")
+		if err != nil {
+			return err
+		}
+	}
+	if option.InvalidGroups != nil {
+		err = putFolderGroupList(&folder, option.InvalidGroups, "InvalidGroups")
+		if err != nil {
+			return err
+		}
+	}
+	if option.ReadGroups != nil {
+		err = putFolderGroupList(&folder, option.ReadGroups, "ReadGroups")
+		if err != nil {
+			return err
+		}
+	}
+	if option.WriteGroups != nil {
+		err = putFolderGroupList(&folder, option.WriteGroups, "WriteGroups")
+		if err != nil {
+			return err
+		}
+	}
+	if option.Public != nil {
+		folder.Public = *option.Public
+	}
+	if option.Enable != nil {
+		folder.Enable = *option.Enable
+	}
+	if option.Readonly != nil {
+		folder.Readonly = *option.Readonly
+	}
 	err = SyncShareFolderOptionToSMB(&folder)
 	if err != nil {
 		return err
