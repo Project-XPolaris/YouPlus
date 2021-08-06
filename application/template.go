@@ -111,12 +111,12 @@ type ShareFolderTemplate struct {
 	Storage       StorageTemplate         `json:"storage,omitempty"`
 	ValidUsers    []ShareFolderUsers      `json:"validUsers"`
 	InvalidUsers  []ShareFolderUsers      `json:"invalidUsers"`
-	ReadUsers     []ShareFolderUsers      `json:"readUsers,omitempty"`
-	WriteUsers    []ShareFolderUsers      `json:"writeUsers,omitempty"`
+	ReadUsers     []ShareFolderUsers      `json:"readUsers"`
+	WriteUsers    []ShareFolderUsers      `json:"writeUsers"`
 	ValidGroups   []*UserGroupTemplate    `json:"validGroups"`
 	InvalidGroups []*UserGroupTemplate    `json:"invalidGroups"`
-	ReadGroups    []*UserGroupTemplate    `json:"readGroups,omitempty"`
-	WriteGroups   []*UserGroupTemplate    `json:"writeGroups,omitempty"`
+	ReadGroups    []*UserGroupTemplate    `json:"readGroups"`
+	WriteGroups   []*UserGroupTemplate    `json:"writeGroups"`
 	Enable        bool                    `json:"enable"`
 	Public        bool                    `json:"public"`
 	Readonly      bool                    `json:"readonly"`

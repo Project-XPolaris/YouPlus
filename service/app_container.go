@@ -99,12 +99,3 @@ func (a *ContainerApp) Stop() error {
 	}).Info("container stop")
 	return nil
 }
-
-func (a *ContainerApp) UpdateStatus() error {
-	container, err := GetContainerByName(DockerClient, a.ContainerName)
-	if err != nil {
-		return err
-	}
-	a.Status = DockerStateMapping[container.State]
-	return nil
-}
