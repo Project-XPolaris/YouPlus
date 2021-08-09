@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/projectxpolaris/youplus/utils"
 	"github.com/rs/xid"
@@ -55,7 +56,7 @@ func (a *ContainerApp) UpdateState() error {
 }
 
 func (a *ContainerApp) Load() error {
-	container, err := GetContainerByName(DockerClient, a.ContainerName)
+	container, err := GetContainerByName(DockerClient, fmt.Sprintf("/%s", a.ContainerName))
 	if err != nil {
 		return err
 	}
