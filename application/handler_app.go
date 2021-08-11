@@ -14,8 +14,12 @@ import (
 )
 
 var startAppHandler haruka.RequestHandler = func(context *haruka.Context) {
-	id := context.GetQueryString("id")
-	err := service.DefaultAppManager.RunApp(id)
+	id, err := context.GetPathParameterAsInt("id")
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.DefaultAppManager.RunApp(int64(id))
 	if err != nil {
 		AbortErrorWithStatus(err, context, 500)
 		return
@@ -26,26 +30,18 @@ var startAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 }
 
 var appListHandler haruka.RequestHandler = func(context *haruka.Context) {
-	data := make([]AppTemplate, 0)
-	for _, app := range service.DefaultAppManager.Apps {
-		meta := app.GetMeta()
-		appTemplate := AppTemplate{
-			Id:        meta.Id,
-			Name:      meta.AppName,
-			Status:    service.StatusTextMapping[meta.Status],
-			AutoStart: meta.AutoStart,
-			Icon:      meta.Icon,
-		}
-		data = append(data, appTemplate)
-	}
 	context.JSON(haruka.JSON{
-		"apps": data,
+		"apps": SerializeAppList(service.DefaultAppManager.Apps),
 	})
 }
 
 var appStopHandler haruka.RequestHandler = func(context *haruka.Context) {
-	id := context.GetQueryString("id")
-	err := service.DefaultAppManager.StopApp(id)
+	id, err := context.GetPathParameterAsInt("id")
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.DefaultAppManager.StopApp(int64(id))
 	if err != nil {
 		AbortErrorWithStatus(err, context, 500)
 		return
@@ -56,7 +52,7 @@ var appStopHandler haruka.RequestHandler = func(context *haruka.Context) {
 }
 
 type AutoStartRequestBody struct {
-	Id string `json:"id"`
+	Id int64 `json:"id"`
 }
 
 var appSetAutoStart haruka.RequestHandler = func(context *haruka.Context) {
@@ -116,23 +112,6 @@ var addAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 
 type RemoveAppRequestBody struct {
 	Path string `json:"path"`
-}
-
-var removeAppHandler haruka.RequestHandler = func(context *haruka.Context) {
-	var body RemoveAppRequestBody
-	err := context.ParseJson(&body)
-	if err != nil {
-		AbortErrorWithStatus(err, context, http.StatusBadRequest)
-		return
-	}
-	err = service.DefaultAppManager.RemoveApp(body.Path)
-	if err != nil {
-		AbortErrorWithStatus(err, context, 500)
-		return
-	}
-	context.JSON(haruka.JSON{
-		"success": true,
-	})
 }
 
 var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
@@ -215,8 +194,12 @@ var installAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 }
 
 var uninstallAppHandler haruka.RequestHandler = func(context *haruka.Context) {
-	id := context.GetQueryString("id")
-	task := service.DefaultTaskPool.NewUnInstallAppTask(id, service.UnInstallAppCallback{
+	id, err := context.GetPathParameterAsInt("id")
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	task := service.DefaultTaskPool.NewUnInstallAppTask(int64(id), service.UnInstallAppCallback{
 		OnDone: func(task *service.UnInstallAppTask) {
 			template := TaskTemplate{}
 			template.Assign(task)

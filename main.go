@@ -50,6 +50,7 @@ func Program() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+
 	logger.Info("load network manager")
 	err = service.DefaultNetworkManager.Load()
 	if err != nil {
@@ -77,7 +78,11 @@ func Program() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-
+	logger.Info("load register")
+	err = service.LoadRegisterManager()
+	if err != nil {
+		logger.Fatal(err)
+	}
 	logger.Info("load apps")
 	err = service.LoadApps()
 	if err != nil {

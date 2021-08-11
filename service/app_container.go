@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/projectxpolaris/youplus/utils"
-	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 	"path/filepath"
 	"time"
@@ -22,13 +21,12 @@ type ContainerApp struct {
 	Container     *types.Container `json:"-"`
 }
 
-func CreateContainerApp(configPath string) (App, error) {
+func CreateContainerApp(id int64, configPath string) (App, error) {
 	app := ContainerApp{}
 	err := utils.ReadJson(configPath, &app)
 	if err != nil {
 		return nil, err
 	}
-	id := xid.New().String()
 	app.Id = id
 	app.Dir = filepath.Dir(configPath)
 	return &app, nil

@@ -6,15 +6,6 @@ import (
 	"github.com/projectxpolaris/youplus/service"
 )
 
-type AppTemplate struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	Pid       int    `json:"pid"`
-	Status    string `json:"status"`
-	AutoStart bool   `json:"auto_start"`
-	Icon      string `json:"icon"`
-}
-
 type ZFSPoolTemplate struct {
 	Name string          `json:"name,omitempty"`
 	Tree ZFSTreeTemplate `json:"tree"`

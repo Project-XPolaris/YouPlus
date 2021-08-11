@@ -1,11 +1,9 @@
 package service
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ahmetb/go-linq/v3"
 	srv "github.com/kardianos/service"
 	"github.com/mholt/archiver/v3"
 	"github.com/projectxpolaris/youplus/database"
@@ -16,7 +14,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -47,7 +44,7 @@ type AppManager struct {
 	sync.RWMutex
 }
 
-func (m *AppManager) GetAppByIdApp(id string) App {
+func (m *AppManager) GetAppByIdApp(id int64) App {
 	for _, app := range m.Apps {
 		if app.GetMeta().Id == id {
 			return app
@@ -55,7 +52,7 @@ func (m *AppManager) GetAppByIdApp(id string) App {
 	}
 	return nil
 }
-func (m *AppManager) RunApp(id string) error {
+func (m *AppManager) RunApp(id int64) error {
 	app := m.GetAppByIdApp(id)
 	if app != nil {
 		m.Lock()
@@ -67,7 +64,7 @@ func (m *AppManager) RunApp(id string) error {
 	}
 	return nil
 }
-func (m *AppManager) SetAutoStart(id string, isAutoStart bool) error {
+func (m *AppManager) SetAutoStart(id int64, isAutoStart bool) error {
 	app := m.GetAppByIdApp(id)
 	if app != nil {
 		err := app.SetAutoStart(isAutoStart)
@@ -78,37 +75,21 @@ func (m *AppManager) SetAutoStart(id string, isAutoStart bool) error {
 	return nil
 }
 
-func (m *AppManager) addApp(path string) error {
-	err := utils.WriteLineToFile("apps", path+"\n")
+func (m *AppManager) addApp(path string) (*database.App, error) {
+	app := &database.App{
+		Path: path,
+	}
+	err := database.Instance.Save(app).Error
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = m.LoadApp(path)
-	return err
+	err = m.LoadApp(app)
+	return app, err
 }
-func (m *AppManager) RemoveApp(id string) error {
-	app := m.GetAppByIdApp(id)
-	if app == nil {
-		return nil
-	}
-	m.Lock()
-	linq.From(m.Apps).Where(func(i interface{}) bool {
-		return i.(App).GetMeta().Id != id
-	}).ToSlice(&m.Apps)
-	m.Unlock()
-
-	err := m.SaveApps()
-	return err
+func (m *AppManager) RemoveApp(id int64) error {
+	return database.Instance.Model(&database.App{}).Where("id = ?", id).Error
 }
-func (m *AppManager) SaveApps() error {
-	appPaths := make([]string, 0)
-	for _, app := range m.Apps {
-		appPaths = append(appPaths, app.GetMeta().Dir)
-	}
-	err := utils.WriteLinesToFile("apps", appPaths)
-	return err
-}
-func (m *AppManager) StopApp(id string) error {
+func (m *AppManager) StopApp(id int64) error {
 	app := m.GetAppByIdApp(id)
 	if app != nil {
 		err := app.Stop()
@@ -142,7 +123,7 @@ type App interface {
 	SetAutoStart(isAutoStart bool) error
 }
 type BaseApp struct {
-	Id        string `json:"-"`
+	Id        int64  `json:"-"`
 	AppName   string `json:"app_name"`
 	AutoStart bool   `json:"auto_start"`
 	Icon      string `json:"icon"`
@@ -160,10 +141,10 @@ func (a *BaseApp) SaveConfig() error {
 	err = ioutil.WriteFile(configPath, file, currentFile.Mode().Perm())
 	return err
 }
-func (m *AppManager) LoadApp(path string) error {
+func (m *AppManager) LoadApp(savedApp *database.App) error {
 	m.Lock()
 	defer m.Unlock()
-	configPath := filepath.Join(path, "youplus.json")
+	configPath := filepath.Join(savedApp.Path, "youplus.json")
 	rawData := map[string]interface{}{}
 	err := utils.ReadJson(configPath, &rawData)
 	var app App
@@ -172,18 +153,18 @@ func (m *AppManager) LoadApp(path string) error {
 	}
 	switch rawData["type"] {
 	case AppTypeRunnable:
-		app, err = CreateRunnableApp(configPath)
+		app, err = CreateRunnableApp(int64(savedApp.ID), configPath)
 		if err != nil {
 			return err
 		}
 
 	case AppTypeService:
-		app, err = CreateServiceApp(configPath)
+		app, err = CreateServiceApp(int64(savedApp.ID), configPath)
 		if err != nil {
 			return err
 		}
 	case AppTypeContainer:
-		app, err = CreateContainerApp(configPath)
+		app, err = CreateContainerApp(int64(savedApp.ID), configPath)
 		if err != nil {
 			return err
 		}
@@ -196,29 +177,21 @@ func (m *AppManager) LoadApp(path string) error {
 	return nil
 }
 func LoadApps() error {
-	file, err := os.Open("apps")
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
 	DefaultAppManager = &AppManager{
 		Apps: []App{},
 	}
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
-		err = DefaultAppManager.LoadApp(line)
+	apps := make([]*database.App, 0)
+	err := database.Instance.Find(&apps).Error
+	if err != nil {
+		return err
+	}
+	for _, app := range apps {
+		err = DefaultAppManager.LoadApp(app)
 		if err != nil {
 			AppLogger.Error(err)
 			continue
 		}
 	}
-
-	if err = scanner.Err(); err != nil {
-		return err
-	}
-
 	AppLogger.Info(fmt.Sprintf("success load %d apps", len(DefaultAppManager.Apps)))
 	DefaultAppManager.RunProcessKeeper()
 	return nil
@@ -391,7 +364,7 @@ func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCall
 			return
 		}
 		task.Extra.Output = string(out)
-		err = DefaultAppManager.addApp(workDir)
+		_, err = DefaultAppManager.addApp(workDir)
 		if err != nil {
 			task.OnError(err)
 			return
@@ -428,7 +401,7 @@ func (t *UnInstallAppTask) OnError(err error) {
 	}
 	logrus.Error(err)
 }
-func (p *TaskPool) NewUnInstallAppTask(appId string, callback UnInstallAppCallback) Task {
+func (p *TaskPool) NewUnInstallAppTask(appId int64, callback UnInstallAppCallback) Task {
 	task := UnInstallAppTask{
 		BaseTask: NewBaseTask(),
 		Extra:    UnInstallAppExtra{},

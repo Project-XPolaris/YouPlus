@@ -12,7 +12,7 @@ func ConnectToDatabase() (err error) {
 	if err != nil {
 		return
 	}
-	err = Instance.AutoMigrate(&ZFSStorage{}, &ShareFolder{}, &PartStorage{}, &User{}, &UserGroup{}, &UploadInstallPack{})
+	err = Instance.AutoMigrate(&ZFSStorage{}, &ShareFolder{}, &PartStorage{}, &User{}, &UserGroup{}, &UploadInstallPack{}, &App{})
 	if err != nil {
 		return
 	}

@@ -3,7 +3,6 @@ package service
 import (
 	srv "github.com/kardianos/service"
 	"github.com/projectxpolaris/youplus/utils"
-	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 	"path/filepath"
 	"strings"
@@ -52,14 +51,13 @@ func (a *ServiceApp) Stop() error {
 	appService, _ := GetServiceByName(strings.ReplaceAll(a.ServiceName, ".service", ""))
 	return appService.Stop()
 }
-func CreateServiceApp(configPath string) (App, error) {
+func CreateServiceApp(id int64, configPath string) (App, error) {
 
 	app := ServiceApp{}
 	err := utils.ReadJson(configPath, &app)
 	if err != nil {
 		return nil, err
 	}
-	id := xid.New().String()
 	app.Id = id
 	app.Dir = filepath.Dir(configPath)
 	return &app, nil

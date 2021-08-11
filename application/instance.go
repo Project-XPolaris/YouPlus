@@ -13,7 +13,6 @@ func RunApplication() {
 	e.UseMiddleware(middleware.NewLoggerMiddleware())
 	e.Router.GET("/apps", appListHandler)
 	e.Router.POST("/apps", addAppHandler)
-	e.Router.DELETE("/apps", removeAppHandler)
 	e.Router.POST("/apps/upload", uploadAppHandler)
 	e.Router.POST("/apps/install", installAppHandler)
 	e.Router.POST("/apps/uninstall", uninstallAppHandler)
@@ -66,6 +65,7 @@ func RunApplication() {
 	e.Router.POST("/os/reboot", rebootHandler)
 	e.Router.GET("/device/info", deviceInfoHandler)
 	e.Router.GET("/network", networkStatusHandler)
+	e.Router.GET("/entry", getEntryByName)
 	e.Router.AddHandler("/notification", notificationSocketHandler)
 	e.UseCors(cors.AllowAll())
 	e.UseMiddleware(middleware.NewJWTMiddleware(&middleware.NewJWTMiddlewareOption{

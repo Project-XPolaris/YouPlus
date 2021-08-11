@@ -3,7 +3,6 @@ package service
 import (
 	"github.com/mitchellh/go-ps"
 	"github.com/projectxpolaris/youplus/utils"
-	"github.com/rs/xid"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -15,13 +14,12 @@ type RunnableApp struct {
 	Cmd          *exec.Cmd `json:"-"`
 }
 
-func CreateRunnableApp(configPath string) (App, error) {
+func CreateRunnableApp(id int64, configPath string) (App, error) {
 	app := RunnableApp{}
 	err := utils.ReadJson(configPath, &app)
 	if err != nil {
 		return nil, err
 	}
-	id := xid.New().String()
 	app.Id = id
 	app.Dir = filepath.Dir(configPath)
 	return &app, nil

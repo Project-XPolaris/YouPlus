@@ -1,10 +1,12 @@
-package service
+package rpc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/projectxpolaris/youplus/service"
+	"github.com/projectxpolaris/youplus/utils"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -12,6 +14,11 @@ import (
 )
 
 var DefaultRPCServer = &RPCServer{}
+
+const (
+	ErrorCodeUnknown        = 9999
+	ErrorCodeEntityNotFound = 6001
+)
 
 type RPCServer struct {
 	server Server
@@ -24,7 +31,7 @@ func (l *RPCServer) Run() {
 	}
 	rpcServer := grpc.NewServer()
 	l.server = Server{}
-	RegisterServiceServer(rpcServer, &l.server)
+	RegisterYouPlusServiceServer(rpcServer, &l.server)
 	log.Printf("server listening at %v", lis.Addr())
 	if err := rpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
@@ -32,7 +39,7 @@ func (l *RPCServer) Run() {
 }
 
 type Server struct {
-	UnimplementedServiceServer
+	UnimplementedYouPlusServiceServer
 }
 
 func (s Server) CheckDataset(ctx context.Context, in *CheckDatasetRequest) (*CheckDatasetReply, error) {
@@ -132,6 +139,52 @@ func (s Server) RollbackDataset(ctx context.Context, in *RollbackDatasetRequest)
 		return nil, err
 	}
 	err = service.DefaultZFSManager.DatasetRollback(datasetPath, *in.Snapshot)
+	if err != nil {
+		return nil, err
+	}
+	success := true
+	return &ActionReply{Success: &success}, nil
+}
+
+func (s Server) RegisterEntry(ctx context.Context, in *RegisterEntryRequest) (*ActionReply, error) {
+	service.DefaultRegisterManager.RegisterApp(&service.Entry{
+		Name:     *in.Name,
+		Instance: *in.Instance,
+		Version:  *in.Version,
+	})
+	success := true
+	return &ActionReply{Success: &success}, nil
+}
+func (s Server) UnregisterEntry(ctx context.Context, in *UnregisterEntryRequest) (*ActionReply, error) {
+	service.DefaultRegisterManager.UnregisterApp(*in.Instance)
+	success := true
+	return &ActionReply{Success: &success}, nil
+}
+func (s Server) EntryHeartbeat(ctx context.Context, in *HeartbeatRequest) (*ActionReply, error) {
+	err := service.DefaultRegisterManager.Heartbeat(in.GetInstance(), in.GetState())
+	if err != nil {
+		code := ErrorCodeUnknown
+		if err == service.EntryNotFoundError {
+			code = ErrorCodeEntityNotFound
+		}
+		return &ActionReply{
+			Success: utils.GetBoolPtr(false),
+			Reason:  utils.GetStringPtr(err.Error()),
+			Code:    utils.GetInt64Ptr(int64(code)),
+		}, nil
+	}
+	success := true
+	return &ActionReply{Success: &success}, nil
+}
+
+func (s Server) UpdateEntryExport(ctx context.Context, in *UpdateEntryExportRequest) (*ActionReply, error) {
+	rawData := []byte(in.GetData())
+	result := map[string]interface{}{}
+	err := json.Unmarshal(rawData, &result)
+	if err != nil {
+		return nil, err
+	}
+	err = service.DefaultRegisterManager.UpdateExport(in.GetInstance(), result)
 	if err != nil {
 		return nil, err
 	}

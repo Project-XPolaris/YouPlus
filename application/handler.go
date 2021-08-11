@@ -61,8 +61,12 @@ var removeStorage haruka.RequestHandler = func(context *haruka.Context) {
 }
 
 var appIconHandler haruka.RequestHandler = func(context *haruka.Context) {
-	id := context.GetQueryString("id")
-	app := service.DefaultAppManager.GetAppByIdApp(id)
+	id, err := context.GetPathParameterAsInt("id")
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	app := service.DefaultAppManager.GetAppByIdApp(int64(id))
 	if app == nil || len(app.GetMeta().Icon) == 0 {
 		context.JSON(haruka.JSON{
 			"success": false,
