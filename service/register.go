@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"github.com/ahmetb/go-linq/v3"
-	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
@@ -24,8 +23,12 @@ type Entry struct {
 	Instance      string
 	Version       int64
 	Status        string
-	Export        interface{}
+	Export        EntityExport
 	LastHeartbeat int64
+}
+type EntityExport struct {
+	Urls  []string `json:"urls"`
+	Extra interface{}
 }
 type RegisterManager struct {
 	Entries []*Entry
@@ -75,7 +78,7 @@ func (m *RegisterManager) UnregisterApp(instance string) {
 		return i.(*Entry).Instance != instance
 	}).ToSlice(&m.Entries)
 }
-func (m *RegisterManager) UpdateExport(instance string, export interface{}) error {
+func (m *RegisterManager) UpdateExport(instance string, export EntityExport) error {
 	m.Lock()
 	defer m.Unlock()
 	targetEntry := m.GetEntryByInstance(instance)
@@ -88,7 +91,6 @@ func (m *RegisterManager) UpdateExport(instance string, export interface{}) erro
 func (m *RegisterManager) Heartbeat(instance string, stats string) error {
 	m.Lock()
 	defer m.Unlock()
-	logrus.Info(instance)
 	targetEntry := m.GetEntryByInstance(instance)
 	if targetEntry == nil {
 		return EntryNotFoundError

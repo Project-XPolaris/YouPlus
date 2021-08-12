@@ -67,6 +67,7 @@ func RunApplication() {
 	e.Router.GET("/network", networkStatusHandler)
 	e.Router.GET("/entry", getEntryByName)
 	e.Router.AddHandler("/notification", notificationSocketHandler)
+	e.Router.HandlerRouter.PathPrefix("/").HandlerFunc(gatewayHandler)
 	e.UseCors(cors.AllowAll())
 	e.UseMiddleware(middleware.NewJWTMiddleware(&middleware.NewJWTMiddlewareOption{
 		ReadTokenString: func(ctx *haruka.Context) string {

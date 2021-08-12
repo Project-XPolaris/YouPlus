@@ -179,7 +179,7 @@ func (s Server) EntryHeartbeat(ctx context.Context, in *HeartbeatRequest) (*Acti
 
 func (s Server) UpdateEntryExport(ctx context.Context, in *UpdateEntryExportRequest) (*ActionReply, error) {
 	rawData := []byte(in.GetData())
-	result := map[string]interface{}{}
+	result := service.EntityExport{}
 	err := json.Unmarshal(rawData, &result)
 	if err != nil {
 		return nil, err
