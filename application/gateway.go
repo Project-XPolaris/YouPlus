@@ -25,10 +25,13 @@ var gatewayHandler = func(writer http.ResponseWriter, request *http.Request) {
 		AbortErrorWithStatusInWriter(errors.New("entity cannot access"), writer, http.StatusBadGateway)
 		return
 	}
-	remote, err := url.Parse(entity.Export.Urls[0])
+	remoteUrl := entity.Export.Urls[0]
+	remote, err := url.Parse(remoteUrl)
 	if err != nil {
 		panic(err)
 	}
 	request.URL.Path = entityPath
+	request.RequestURI = entityPath
+	request.Host = remote.Host
 	httputil.NewSingleHostReverseProxy(remote).ServeHTTP(writer, request)
 }

@@ -29,6 +29,8 @@ type YouPlusServiceClient interface {
 	UnregisterEntry(ctx context.Context, in *UnregisterEntryRequest, opts ...grpc.CallOption) (*ActionReply, error)
 	UpdateEntryExport(ctx context.Context, in *UpdateEntryExportRequest, opts ...grpc.CallOption) (*ActionReply, error)
 	EntryHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*ActionReply, error)
+	GenerateToken(ctx context.Context, in *GenerateTokenRequest, opts ...grpc.CallOption) (*GenerateTokenReply, error)
+	CheckToken(ctx context.Context, in *CheckTokenRequest, opts ...grpc.CallOption) (*CheckTokenReply, error)
 }
 
 type youPlusServiceClient struct {
@@ -138,6 +140,24 @@ func (c *youPlusServiceClient) EntryHeartbeat(ctx context.Context, in *Heartbeat
 	return out, nil
 }
 
+func (c *youPlusServiceClient) GenerateToken(ctx context.Context, in *GenerateTokenRequest, opts ...grpc.CallOption) (*GenerateTokenReply, error) {
+	out := new(GenerateTokenReply)
+	err := c.cc.Invoke(ctx, "/YouPlusService/GenerateToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *youPlusServiceClient) CheckToken(ctx context.Context, in *CheckTokenRequest, opts ...grpc.CallOption) (*CheckTokenReply, error) {
+	out := new(CheckTokenReply)
+	err := c.cc.Invoke(ctx, "/YouPlusService/CheckToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // YouPlusServiceServer is the server API for YouPlusService service.
 // All implementations must embed UnimplementedYouPlusServiceServer
 // for forward compatibility
@@ -153,6 +173,8 @@ type YouPlusServiceServer interface {
 	UnregisterEntry(context.Context, *UnregisterEntryRequest) (*ActionReply, error)
 	UpdateEntryExport(context.Context, *UpdateEntryExportRequest) (*ActionReply, error)
 	EntryHeartbeat(context.Context, *HeartbeatRequest) (*ActionReply, error)
+	GenerateToken(context.Context, *GenerateTokenRequest) (*GenerateTokenReply, error)
+	CheckToken(context.Context, *CheckTokenRequest) (*CheckTokenReply, error)
 	mustEmbedUnimplementedYouPlusServiceServer()
 }
 
@@ -192,6 +214,12 @@ func (UnimplementedYouPlusServiceServer) UpdateEntryExport(context.Context, *Upd
 }
 func (UnimplementedYouPlusServiceServer) EntryHeartbeat(context.Context, *HeartbeatRequest) (*ActionReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EntryHeartbeat not implemented")
+}
+func (UnimplementedYouPlusServiceServer) GenerateToken(context.Context, *GenerateTokenRequest) (*GenerateTokenReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateToken not implemented")
+}
+func (UnimplementedYouPlusServiceServer) CheckToken(context.Context, *CheckTokenRequest) (*CheckTokenReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckToken not implemented")
 }
 func (UnimplementedYouPlusServiceServer) mustEmbedUnimplementedYouPlusServiceServer() {}
 
@@ -404,6 +432,42 @@ func _YouPlusService_EntryHeartbeat_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _YouPlusService_GenerateToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(YouPlusServiceServer).GenerateToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/YouPlusService/GenerateToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(YouPlusServiceServer).GenerateToken(ctx, req.(*GenerateTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _YouPlusService_CheckToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(YouPlusServiceServer).CheckToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/YouPlusService/CheckToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(YouPlusServiceServer).CheckToken(ctx, req.(*CheckTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // YouPlusService_ServiceDesc is the grpc.ServiceDesc for YouPlusService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -454,6 +518,14 @@ var YouPlusService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EntryHeartbeat",
 			Handler:    _YouPlusService_EntryHeartbeat_Handler,
+		},
+		{
+			MethodName: "GenerateToken",
+			Handler:    _YouPlusService_GenerateToken_Handler,
+		},
+		{
+			MethodName: "CheckToken",
+			Handler:    _YouPlusService_CheckToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

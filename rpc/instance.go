@@ -18,6 +18,7 @@ var DefaultRPCServer = &RPCServer{}
 const (
 	ErrorCodeUnknown        = 9999
 	ErrorCodeEntityNotFound = 6001
+	ErrorCodeEntity         = 2001
 )
 
 type RPCServer struct {
@@ -190,4 +191,35 @@ func (s Server) UpdateEntryExport(ctx context.Context, in *UpdateEntryExportRequ
 	}
 	success := true
 	return &ActionReply{Success: &success}, nil
+}
+
+func (s Server) GenerateToken(ctx context.Context, in *GenerateTokenRequest) (*GenerateTokenReply, error) {
+	uid, tokenStr, err := service.UserLogin(*in.Username, *in.Password, false)
+	if err != nil {
+		return &GenerateTokenReply{
+			Success: utils.GetBoolPtr(false),
+			Reason:  utils.GetStringPtr(err.Error()),
+			Code:    utils.GetInt64Ptr(int64(ErrorCodeEntity)),
+		}, nil
+	}
+	return &GenerateTokenReply{
+		Success: utils.GetBoolPtr(true),
+		Uid:     &uid,
+		Token:   &tokenStr,
+	}, nil
+}
+func (s Server) CheckToken(ctx context.Context, in *CheckTokenRequest) (*CheckTokenReply, error) {
+	user, err := service.ParseUser(*in.Token)
+	if err != nil {
+		return &CheckTokenReply{
+			Success: utils.GetBoolPtr(false),
+			Reason:  utils.GetStringPtr(err.Error()),
+			Code:    utils.GetInt64Ptr(int64(ErrorCodeEntity)),
+		}, nil
+	}
+	return &CheckTokenReply{
+		Success:  utils.GetBoolPtr(true),
+		Uid:      &user.Uid,
+		Username: &user.Username,
+	}, nil
 }

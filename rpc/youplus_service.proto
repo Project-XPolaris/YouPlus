@@ -1,3 +1,4 @@
+syntax = "proto2";
 option go_package = "/rpc";
 
 service YouPlusService {
@@ -12,6 +13,8 @@ service YouPlusService {
   rpc UnregisterEntry (UnregisterEntryRequest) returns (ActionReply) {}
   rpc UpdateEntryExport (UpdateEntryExportRequest) returns (ActionReply) {}
   rpc EntryHeartbeat (HeartbeatRequest) returns (ActionReply) {}
+  rpc GenerateToken(GenerateTokenRequest) returns (GenerateTokenReply) {}
+  rpc CheckToken(CheckTokenRequest) returns (CheckTokenReply) {}
 }
 
 message CheckDatasetRequest {
@@ -75,3 +78,27 @@ message HeartbeatRequest {
   required string instance = 2;
   required string state = 3;
 }
+
+message GenerateTokenReply {
+  required  bool success = 1;
+  optional  string reason = 2;
+  optional int64  code = 3;
+  optional string token = 4;
+  optional string uid = 5;
+}
+message GenerateTokenRequest {
+  required  string username = 1;
+  required string password = 2;
+}
+
+message CheckTokenRequest {
+  required string token = 1;
+}
+message CheckTokenReply {
+  required  bool success = 1;
+  optional  string reason = 2;
+  optional int64  code = 3;
+  optional string username = 4;
+  optional string uid = 5;
+}
+
