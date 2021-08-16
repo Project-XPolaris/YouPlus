@@ -66,6 +66,7 @@ func RunApplication() {
 	e.Router.GET("/device/info", deviceInfoHandler)
 	e.Router.GET("/network", networkStatusHandler)
 	e.Router.GET("/entry", getEntryByName)
+	e.Router.GET("/entries", getEntityList)
 	e.Router.AddHandler("/notification", notificationSocketHandler)
 	e.Router.HandlerRouter.PathPrefix("/").HandlerFunc(gatewayHandler)
 	e.UseCors(cors.AllowAll())

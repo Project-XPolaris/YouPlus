@@ -18,3 +18,10 @@ var getEntryByName haruka.RequestHandler = func(context *haruka.Context) {
 	template.Assign(entry)
 	context.JSON(template)
 }
+
+var getEntityList haruka.RequestHandler = func(context *haruka.Context) {
+	data := SerializerEntityList(service.DefaultRegisterManager.Entries)
+	context.JSON(haruka.JSON{
+		"entities": data,
+	})
+}
