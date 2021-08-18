@@ -1,4 +1,5 @@
 syntax = "proto2";
+package youplus;
 option go_package = "/rpc";
 
 service YouPlusService {

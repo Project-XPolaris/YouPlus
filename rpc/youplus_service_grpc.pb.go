@@ -43,7 +43,7 @@ func NewYouPlusServiceClient(cc grpc.ClientConnInterface) YouPlusServiceClient {
 
 func (c *youPlusServiceClient) CheckDataset(ctx context.Context, in *CheckDatasetRequest, opts ...grpc.CallOption) (*CheckDatasetReply, error) {
 	out := new(CheckDatasetReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/CheckDataset", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/CheckDataset", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (c *youPlusServiceClient) CheckDataset(ctx context.Context, in *CheckDatase
 
 func (c *youPlusServiceClient) GetDatasetInfo(ctx context.Context, in *GetDatasetInfoRequest, opts ...grpc.CallOption) (*GetDatasetInfoReply, error) {
 	out := new(GetDatasetInfoReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/GetDatasetInfo", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/GetDatasetInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (c *youPlusServiceClient) GetDatasetInfo(ctx context.Context, in *GetDatase
 
 func (c *youPlusServiceClient) CreateDataset(ctx context.Context, in *CreateDatasetRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/CreateDataset", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/CreateDataset", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (c *youPlusServiceClient) CreateDataset(ctx context.Context, in *CreateData
 
 func (c *youPlusServiceClient) DeleteDataset(ctx context.Context, in *DeleteDatasetRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/DeleteDataset", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/DeleteDataset", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *youPlusServiceClient) DeleteDataset(ctx context.Context, in *DeleteData
 
 func (c *youPlusServiceClient) CreateSnapshot(ctx context.Context, in *CreateSnapshotRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/CreateSnapshot", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/CreateSnapshot", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (c *youPlusServiceClient) CreateSnapshot(ctx context.Context, in *CreateSna
 
 func (c *youPlusServiceClient) DeleteSnapshot(ctx context.Context, in *DeleteSnapshotRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/DeleteSnapshot", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/DeleteSnapshot", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (c *youPlusServiceClient) DeleteSnapshot(ctx context.Context, in *DeleteSna
 
 func (c *youPlusServiceClient) RollbackDataset(ctx context.Context, in *RollbackDatasetRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/RollbackDataset", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/RollbackDataset", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (c *youPlusServiceClient) RollbackDataset(ctx context.Context, in *Rollback
 
 func (c *youPlusServiceClient) RegisterEntry(ctx context.Context, in *RegisterEntryRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/RegisterEntry", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/RegisterEntry", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (c *youPlusServiceClient) RegisterEntry(ctx context.Context, in *RegisterEn
 
 func (c *youPlusServiceClient) UnregisterEntry(ctx context.Context, in *UnregisterEntryRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/UnregisterEntry", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/UnregisterEntry", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (c *youPlusServiceClient) UnregisterEntry(ctx context.Context, in *Unregist
 
 func (c *youPlusServiceClient) UpdateEntryExport(ctx context.Context, in *UpdateEntryExportRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/UpdateEntryExport", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/UpdateEntryExport", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (c *youPlusServiceClient) UpdateEntryExport(ctx context.Context, in *Update
 
 func (c *youPlusServiceClient) EntryHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*ActionReply, error) {
 	out := new(ActionReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/EntryHeartbeat", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/EntryHeartbeat", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (c *youPlusServiceClient) EntryHeartbeat(ctx context.Context, in *Heartbeat
 
 func (c *youPlusServiceClient) GenerateToken(ctx context.Context, in *GenerateTokenRequest, opts ...grpc.CallOption) (*GenerateTokenReply, error) {
 	out := new(GenerateTokenReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/GenerateToken", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/GenerateToken", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (c *youPlusServiceClient) GenerateToken(ctx context.Context, in *GenerateTo
 
 func (c *youPlusServiceClient) CheckToken(ctx context.Context, in *CheckTokenRequest, opts ...grpc.CallOption) (*CheckTokenReply, error) {
 	out := new(CheckTokenReply)
-	err := c.cc.Invoke(ctx, "/YouPlusService/CheckToken", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/youplus.YouPlusService/CheckToken", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +244,7 @@ func _YouPlusService_CheckDataset_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/CheckDataset",
+		FullMethod: "/youplus.YouPlusService/CheckDataset",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).CheckDataset(ctx, req.(*CheckDatasetRequest))
@@ -262,7 +262,7 @@ func _YouPlusService_GetDatasetInfo_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/GetDatasetInfo",
+		FullMethod: "/youplus.YouPlusService/GetDatasetInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).GetDatasetInfo(ctx, req.(*GetDatasetInfoRequest))
@@ -280,7 +280,7 @@ func _YouPlusService_CreateDataset_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/CreateDataset",
+		FullMethod: "/youplus.YouPlusService/CreateDataset",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).CreateDataset(ctx, req.(*CreateDatasetRequest))
@@ -298,7 +298,7 @@ func _YouPlusService_DeleteDataset_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/DeleteDataset",
+		FullMethod: "/youplus.YouPlusService/DeleteDataset",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).DeleteDataset(ctx, req.(*DeleteDatasetRequest))
@@ -316,7 +316,7 @@ func _YouPlusService_CreateSnapshot_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/CreateSnapshot",
+		FullMethod: "/youplus.YouPlusService/CreateSnapshot",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).CreateSnapshot(ctx, req.(*CreateSnapshotRequest))
@@ -334,7 +334,7 @@ func _YouPlusService_DeleteSnapshot_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/DeleteSnapshot",
+		FullMethod: "/youplus.YouPlusService/DeleteSnapshot",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).DeleteSnapshot(ctx, req.(*DeleteSnapshotRequest))
@@ -352,7 +352,7 @@ func _YouPlusService_RollbackDataset_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/RollbackDataset",
+		FullMethod: "/youplus.YouPlusService/RollbackDataset",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).RollbackDataset(ctx, req.(*RollbackDatasetRequest))
@@ -370,7 +370,7 @@ func _YouPlusService_RegisterEntry_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/RegisterEntry",
+		FullMethod: "/youplus.YouPlusService/RegisterEntry",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).RegisterEntry(ctx, req.(*RegisterEntryRequest))
@@ -388,7 +388,7 @@ func _YouPlusService_UnregisterEntry_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/UnregisterEntry",
+		FullMethod: "/youplus.YouPlusService/UnregisterEntry",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).UnregisterEntry(ctx, req.(*UnregisterEntryRequest))
@@ -406,7 +406,7 @@ func _YouPlusService_UpdateEntryExport_Handler(srv interface{}, ctx context.Cont
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/UpdateEntryExport",
+		FullMethod: "/youplus.YouPlusService/UpdateEntryExport",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).UpdateEntryExport(ctx, req.(*UpdateEntryExportRequest))
@@ -424,7 +424,7 @@ func _YouPlusService_EntryHeartbeat_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/EntryHeartbeat",
+		FullMethod: "/youplus.YouPlusService/EntryHeartbeat",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).EntryHeartbeat(ctx, req.(*HeartbeatRequest))
@@ -442,7 +442,7 @@ func _YouPlusService_GenerateToken_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/GenerateToken",
+		FullMethod: "/youplus.YouPlusService/GenerateToken",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).GenerateToken(ctx, req.(*GenerateTokenRequest))
@@ -460,7 +460,7 @@ func _YouPlusService_CheckToken_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/YouPlusService/CheckToken",
+		FullMethod: "/youplus.YouPlusService/CheckToken",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(YouPlusServiceServer).CheckToken(ctx, req.(*CheckTokenRequest))
@@ -472,7 +472,7 @@ func _YouPlusService_CheckToken_Handler(srv interface{}, ctx context.Context, de
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var YouPlusService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "YouPlusService",
+	ServiceName: "youplus.YouPlusService",
 	HandlerType: (*YouPlusServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

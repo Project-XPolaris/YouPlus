@@ -17,13 +17,3 @@ func (t *EntryTemplate) Assign(entry *service.Entry) {
 	t.Instance = entry.Instance
 	t.State = entry.Status
 }
-
-func SerializerEntityList(entityList []*service.Entry) []EntryTemplate {
-	result := make([]EntryTemplate, 0)
-	for _, entity := range entityList {
-		template := EntryTemplate{}
-		template.Assign(entity)
-		result = append(result, template)
-	}
-	return result
-}
