@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ahmetb/go-linq/v3"
 	srv "github.com/kardianos/service"
 	"github.com/mholt/archiver/v3"
 	"github.com/projectxpolaris/youplus/database"
@@ -75,9 +76,10 @@ func (m *AppManager) SetAutoStart(id int64, isAutoStart bool) error {
 	return nil
 }
 
-func (m *AppManager) addApp(path string) (*database.App, error) {
+func (m *AppManager) addApp(path string, configItems []*database.ConfigItem) (*database.App, error) {
 	app := &database.App{
-		Path: path,
+		Path:       path,
+		ConfigItem: configItems,
 	}
 	err := database.Instance.Save(app).Error
 	if err != nil {
@@ -87,7 +89,16 @@ func (m *AppManager) addApp(path string) (*database.App, error) {
 	return app, err
 }
 func (m *AppManager) RemoveApp(id int64) error {
-	return database.Instance.Model(&database.App{}).Where("id = ?", id).Error
+	err := database.Instance.Model(&database.App{}).Where("id = ?", id).Error
+	if err != nil {
+		return err
+	}
+	m.Lock()
+	defer m.Unlock()
+	linq.From(m.Apps).Where(func(i interface{}) bool {
+		return i.(App).GetMeta().Id != id
+	}).ToSlice(&m.Apps)
+	return nil
 }
 func (m *AppManager) StopApp(id int64) error {
 	app := m.GetAppByIdApp(id)
@@ -204,11 +215,18 @@ func GetServiceByName(name string) (target srv.Service, err error) {
 	return
 }
 
+type UlistArg struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Key  string `json:"key"`
+}
 type UList struct {
-	InstallType     string   `json:"installType"`
-	Name            string   `json:"name"`
-	InstallScript   []string `json:"installScript"`
-	UnInstallScript []string `json:"uninstallScript"`
+	InstallType     string                 `json:"installType"`
+	Name            string                 `json:"name"`
+	InstallScript   []string               `json:"installScript"`
+	UnInstallScript []string               `json:"uninstallScript"`
+	ConfigItems     []*database.ConfigItem `json:"configItems"`
+	InstallArgs     []UlistArg             `json:"installArgs"`
 }
 
 func getListFromInstallPack(packagePath string) (*UList, error) {
@@ -307,7 +325,7 @@ func (t *InstallAppTask) OnError(err error) {
 	}
 	logrus.Error(err)
 }
-func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCallback) Task {
+func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCallback, args map[string]string) Task {
 	task := InstallAppTask{
 		BaseTask: NewBaseTask(),
 		Extra: InstallAppExtra{
@@ -364,7 +382,7 @@ func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCall
 			return
 		}
 		task.Extra.Output = string(out)
-		_, err = DefaultAppManager.addApp(workDir)
+		_, err = DefaultAppManager.addApp(workDir, uList.ConfigItems)
 		if err != nil {
 			task.OnError(err)
 			return

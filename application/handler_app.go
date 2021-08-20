@@ -14,7 +14,7 @@ import (
 )
 
 var startAppHandler haruka.RequestHandler = func(context *haruka.Context) {
-	id, err := context.GetPathParameterAsInt("id")
+	id, err := context.GetQueryInt("id")
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
@@ -36,7 +36,7 @@ var appListHandler haruka.RequestHandler = func(context *haruka.Context) {
 }
 
 var appStopHandler haruka.RequestHandler = func(context *haruka.Context) {
-	id, err := context.GetPathParameterAsInt("id")
+	id, err := context.GetQueryInt("id")
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
@@ -162,10 +162,21 @@ var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		"appName": app.AppName,
 	})
 }
+
+type InstallAppRequestBody struct {
+	Args map[string]string `json:"args"`
+}
+
 var installAppHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var body InstallAppRequestBody
+	err := context.ParseJson(&body)
+	if err != nil {
+		AbortErrorWithStatus(err, context, 500)
+		return
+	}
 	id := context.GetQueryString("id")
 	var pack database.UploadInstallPack
-	err := database.Instance.Where("id = ?", id).Find(&pack).Error
+	err = database.Instance.Where("id = ?", id).Find(&pack).Error
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
@@ -187,14 +198,14 @@ var installAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 				"data":  template,
 			})
 		},
-	})
+	}, body.Args)
 	template := TaskTemplate{}
 	template.Assign(task)
 	context.JSON(template)
 }
 
 var uninstallAppHandler haruka.RequestHandler = func(context *haruka.Context) {
-	id, err := context.GetPathParameterAsInt("id")
+	id, err := context.GetQueryInt("id")
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
