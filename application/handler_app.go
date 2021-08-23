@@ -160,11 +160,12 @@ var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		"name":    ulist.Name,
 		"type":    ulist.InstallType,
 		"appName": app.AppName,
+		"args":    ulist.InstallArgs,
 	})
 }
 
 type InstallAppRequestBody struct {
-	Args map[string]string `json:"args"`
+	Args []service.InstallArgs `json:"args"`
 }
 
 var installAppHandler haruka.RequestHandler = func(context *haruka.Context) {

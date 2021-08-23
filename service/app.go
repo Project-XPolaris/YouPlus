@@ -216,9 +216,11 @@ func GetServiceByName(name string) (target srv.Service, err error) {
 }
 
 type UlistArg struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	Key  string `json:"key"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Key    string `json:"key"`
+	Source string `json:"source"`
+	Desc   string `json:"desc"`
 }
 type UList struct {
 	InstallType     string                 `json:"installType"`
@@ -325,7 +327,14 @@ func (t *InstallAppTask) OnError(err error) {
 	}
 	logrus.Error(err)
 }
-func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCallback, args map[string]string) Task {
+
+type InstallArgs struct {
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+	Source string `json:"source"`
+}
+
+func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCallback, externalArgs []InstallArgs) Task {
 	task := InstallAppTask{
 		BaseTask: NewBaseTask(),
 		Extra: InstallAppExtra{
@@ -373,6 +382,17 @@ func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCall
 		args := make([]string, 0)
 		if len(uList.InstallScript) > 1 {
 			args = uList.InstallScript[1:]
+		}
+		if externalArgs != nil {
+			var cmdArgs []InstallArgs
+			linq.From(externalArgs).Where(func(i interface{}) bool {
+				return i.(InstallArgs).Source == "cmd" && linq.From(uList.InstallArgs).AnyWith(func(ulistArg interface{}) bool {
+					return ulistArg.(UlistArg).Key == i.(InstallArgs).Key
+				})
+			}).ToSlice(&cmdArgs)
+			for _, cmdArg := range cmdArgs {
+				args = append(args, cmdArg.Key, cmdArg.Value)
+			}
 		}
 		cmd := exec.Command(name, args...)
 		cmd.Dir = workDir

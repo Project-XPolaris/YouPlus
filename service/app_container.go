@@ -72,6 +72,7 @@ func (a *ContainerApp) Start() error {
 	}
 	ctx := context.Background()
 	err := DockerClient.ContainerStart(ctx, a.Container.ID, types.ContainerStartOptions{})
+
 	if err != nil {
 		return err
 	}
