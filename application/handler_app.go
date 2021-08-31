@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 	"github.com/allentom/haruka"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
 	"github.com/rs/xid"
@@ -165,7 +166,7 @@ var uploadAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 }
 
 type InstallAppRequestBody struct {
-	Args []service.InstallArgs `json:"args"`
+	Args []*service.InstallArgs `json:"args"`
 }
 
 var installAppHandler haruka.RequestHandler = func(context *haruka.Context) {
@@ -175,6 +176,7 @@ var installAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, 500)
 		return
 	}
+	claims := context.Param["claims"].(*jwt.StandardClaims)
 	id := context.GetQueryString("id")
 	var pack database.UploadInstallPack
 	err = database.Instance.Where("id = ?", id).Find(&pack).Error
@@ -199,7 +201,7 @@ var installAppHandler haruka.RequestHandler = func(context *haruka.Context) {
 				"data":  template,
 			})
 		},
-	}, body.Args)
+	}, body.Args, claims.Id)
 	template := TaskTemplate{}
 	template.Assign(task)
 	context.JSON(template)

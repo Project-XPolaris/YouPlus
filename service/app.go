@@ -216,11 +216,12 @@ func GetServiceByName(name string) (target srv.Service, err error) {
 }
 
 type UlistArg struct {
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Key    string `json:"key"`
-	Source string `json:"source"`
-	Desc   string `json:"desc"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Key     string `json:"key"`
+	Source  string `json:"source"`
+	Desc    string `json:"desc"`
+	Require bool   `json:"require"`
 }
 type UList struct {
 	InstallType     string                 `json:"installType"`
@@ -334,7 +335,7 @@ type InstallArgs struct {
 	Source string `json:"source"`
 }
 
-func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCallback, externalArgs []InstallArgs) Task {
+func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCallback, externalArgs []*InstallArgs, username string) Task {
 	task := InstallAppTask{
 		BaseTask: NewBaseTask(),
 		Extra: InstallAppExtra{
@@ -383,25 +384,75 @@ func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCall
 		if len(uList.InstallScript) > 1 {
 			args = uList.InstallScript[1:]
 		}
-		if externalArgs != nil {
-			var cmdArgs []InstallArgs
-			linq.From(externalArgs).Where(func(i interface{}) bool {
-				return i.(InstallArgs).Source == "cmd" && linq.From(uList.InstallArgs).AnyWith(func(ulistArg interface{}) bool {
-					return ulistArg.(UlistArg).Key == i.(InstallArgs).Key
-				})
-			}).ToSlice(&cmdArgs)
-			for _, cmdArg := range cmdArgs {
-				args = append(args, cmdArg.Key, cmdArg.Value)
+		// check arg is validate
+		if externalArgs == nil {
+			task.OnError(errors.New("install args is nil"))
+			return
+		}
+		for _, packArg := range uList.InstallArgs {
+			if !packArg.Require {
+				continue
 			}
+			rawInputArg := linq.From(externalArgs).FirstWith(func(i interface{}) bool {
+				return i.(*InstallArgs).Key == packArg.Key
+			})
+			if rawInputArg == nil {
+				task.OnError(errors.New(fmt.Sprintf("install arg [%s] is required", packArg.Name)))
+				return
+			}
+		}
+
+		// set arg
+		var cmdArgs []*InstallArgs
+		// filter key
+		linq.From(externalArgs).Where(func(i interface{}) bool {
+			return i.(*InstallArgs).Source == "cmd" && linq.From(uList.InstallArgs).AnyWith(func(ulistArg interface{}) bool {
+				return ulistArg.(UlistArg).Key == i.(*InstallArgs).Key
+			})
+		}).ToSlice(&cmdArgs)
+		linq.From(externalArgs).ForEach(func(i interface{}) {
+			arg := i.(*InstallArgs)
+			var ulistArg UlistArg
+			rawArg := linq.From(uList.InstallArgs).FirstWith(func(ulistArgI interface{}) bool {
+				return ulistArgI.(UlistArg).Key == arg.Key
+			})
+			if rawArg == nil {
+				return
+			}
+			ulistArg = rawArg.(UlistArg)
+			if ulistArg.Type == "path" {
+				realPath, err := DefaultAddressConverterManager.GetRealPath(arg.Value, username)
+				if err != nil {
+					task.OnError(err)
+					logrus.WithFields(logrus.Fields{
+						"key":   arg.Key,
+						"value": arg.Value,
+					}).Error(err)
+					return
+				}
+				if !utils.IsFileExist(realPath) {
+					task.OnError(err)
+					logrus.WithFields(logrus.Fields{
+						"key":   arg.Key,
+						"value": arg.Value,
+					}).Error(errors.New("target path not found"))
+					return
+				}
+				arg.Value = realPath
+
+			}
+		})
+		for _, cmdArg := range cmdArgs {
+			args = append(args, cmdArg.Key, cmdArg.Value)
 		}
 		cmd := exec.Command(name, args...)
 		cmd.Dir = workDir
 		out, err := cmd.Output()
+		task.Extra.Output = string(out)
 		if err != nil {
 			task.OnError(err)
 			return
 		}
-		task.Extra.Output = string(out)
 		_, err = DefaultAppManager.addApp(workDir, uList.ConfigItems)
 		if err != nil {
 			task.OnError(err)

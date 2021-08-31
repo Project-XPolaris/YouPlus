@@ -29,6 +29,7 @@ type AddressConverterManager struct {
 	Entities []*Entity
 }
 type PathItem struct {
+	Name     string `json:"name"`
 	RealPath string `json:"realPath"`
 	Path     string `json:"path"`
 	Type     string `json:"type"`
@@ -88,6 +89,7 @@ func (m *AddressConverterManager) ReadDir(target string, username string) ([]Pat
 				}
 			}
 			result = append(result, PathItem{
+				Name:     entity.Name,
 				RealPath: entity.Path,
 				Path:     filepath.Join(entity.Name),
 				Type:     "Directory",
@@ -118,6 +120,7 @@ func (m *AddressConverterManager) ReadDir(target string, username string) ([]Pat
 	}
 	for _, item := range items {
 		pathItem := PathItem{
+			Name:     item.Name(),
 			RealPath: filepath.Join(realPath, item.Name()),
 			Path:     filepath.Join(target, item.Name()),
 		}
