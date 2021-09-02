@@ -12,6 +12,7 @@ import (
 
 var DockerStateMapping = map[string]int{
 	"running": StatusRunning,
+	"created": StatusStop,
 	"exited":  StatusStop,
 }
 
@@ -41,7 +42,7 @@ func (a *ContainerApp) GetMeta() *BaseApp {
 }
 
 func (a *ContainerApp) UpdateState() error {
-	container, err := GetContainerByName(DockerClient, a.ContainerName)
+	container, err := GetContainerByName(DockerClient, fmt.Sprintf("/%s", a.ContainerName))
 	if err != nil {
 		return err
 	}
