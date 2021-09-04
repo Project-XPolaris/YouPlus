@@ -16,7 +16,10 @@ var getEntryByName haruka.RequestHandler = func(context *haruka.Context) {
 	}
 	template := EntryTemplate{}
 	template.Assign(entry)
-	context.JSON(template)
+	context.JSON(haruka.JSON{
+		"success": true,
+		"entity":  template,
+	})
 }
 
 var getEntityList haruka.RequestHandler = func(context *haruka.Context) {

@@ -11,6 +11,7 @@ var noAuthPath = []string{
 	"/app/icon",
 	"/notification",
 	"/info",
+	"/entry",
 }
 
 type AuthMiddleware struct {
