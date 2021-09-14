@@ -6,6 +6,7 @@ import (
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/projectxpolaris/youplus/netplan"
 	"github.com/projectxpolaris/youplus/utils"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"net"
@@ -18,19 +19,19 @@ var (
 )
 
 type IPv4Config struct {
-	DHCP    bool     `json:"dhcp"`
+	DHCP    *bool    `json:"dhcp"`
 	Address []string `json:"address"`
 }
 type IPv6Config struct {
-	DHCP    bool     `json:"dhcp"`
+	DHCP    *bool    `json:"dhcp"`
 	Address []string `json:"address"`
 }
 type NetworkInterface struct {
 	Name         string              `json:"name"`
 	IPv4Address  []string            `json:"IPv4Address"`
 	IPv6Address  []string            `json:"IPv6Address"`
-	IPv4         IPv4Config          `json:"IPv4"`
-	IPv6         IPv6Config          `json:"IPv6"`
+	IPv4Config   *IPv4Config         `json:"IPv4Config"`
+	IPv6Config   *IPv6Config         `json:"IPv6Config"`
 	HardwareInfo NetworkHardwareInfo `json:"hardwareInfo"`
 }
 type NetworkHardwareInfo struct {
@@ -93,15 +94,15 @@ func (m *NetworkManager) Init() error {
 		return nil
 	}
 	netplanConf := netplan.NetPlanConf{Network: netplan.Network{
-		Renderer:  "NetworkManager",
-		Version:   "2",
+		Renderer:  utils.GetStringPtr("NetworkManager"),
+		Version:   utils.GetStringPtr("2"),
 		Ethernets: map[string]netplan.Ethernet{},
 	}}
 	for _, iface := range m.Interfaces {
 		netplanConf.Network.Ethernets[iface.Name] = netplan.Ethernet{
-			DHCP4:       true,
-			DHCP6:       true,
-			Optional:    true,
+			DHCP4:       utils.GetBoolPtr(true),
+			DHCP6:       utils.GetBoolPtr(true),
+			Optional:    utils.GetBoolPtr(true),
 			Nameservers: netplan.Nameserver{},
 		}
 	}
@@ -165,13 +166,25 @@ func (m *NetworkManager) Load() error {
 		if !exist {
 			continue
 		}
-		networkInterface.IPv4 = IPv4Config{
+
+		networkInterface.IPv4Config = &IPv4Config{
 			DHCP:    conf.DHCP4,
-			Address: conf.Addresses,
+			Address: []string{},
 		}
-		networkInterface.IPv6 = IPv6Config{
+		networkInterface.IPv6Config = &IPv6Config{
 			DHCP:    conf.DHCP6,
-			Address: conf.Addresses,
+			Address: []string{},
+		}
+		for _, address := range conf.Addresses {
+			ip, _, _ := net.ParseCIDR(address)
+			if ip.To4() != nil {
+				networkInterface.IPv4Config.Address = append(networkInterface.IPv4Config.Address, address)
+			}
+			test := ip.To16()
+			logrus.Info(test)
+			if ip.To16() != nil {
+				networkInterface.IPv6Config.Address = append(networkInterface.IPv6Config.Address, address)
+			}
 		}
 		// find address
 		var iface *net.Interface
@@ -204,22 +217,29 @@ func (m *NetworkManager) Load() error {
 }
 func (m *NetworkManager) writeConfig() error {
 	netplanConf := netplan.NetPlanConf{Network: netplan.Network{
-		Renderer:  "NetworkManager",
-		Version:   "2",
+		Renderer:  utils.GetStringPtr("NetworkManager"),
+		Version:   utils.GetStringPtr("2"),
 		Ethernets: map[string]netplan.Ethernet{},
 	}}
 	for _, iface := range m.Interfaces {
+		if iface.IPv4Config == nil || iface.IPv6Config == nil {
+			continue
+		}
 		netConf := netplan.Ethernet{
-			DHCP4:       iface.IPv4.DHCP,
-			DHCP6:       iface.IPv6.DHCP,
-			Optional:    true,
+			DHCP4:       iface.IPv4Config.DHCP,
+			DHCP6:       iface.IPv6Config.DHCP,
+			Optional:    utils.GetBoolPtr(true),
 			Nameservers: netplan.Nameserver{},
 		}
-		if iface.IPv4.Address != nil {
-			netConf.Addresses = iface.IPv4.Address
+		configAddrs := make([]string, 0)
+		if iface.IPv4Config.Address != nil {
+			configAddrs = append(configAddrs, iface.IPv4Config.Address...)
 		}
-		if iface.IPv6.Address != nil {
-			netConf.Addresses = iface.IPv6.Address
+		if iface.IPv6Config.Address != nil {
+			configAddrs = append(configAddrs, iface.IPv6Config.Address...)
+		}
+		if len(configAddrs) > 0 {
+			netConf.Addresses = configAddrs
 		}
 		netplanConf.Network.Ethernets[iface.Name] = netConf
 	}
@@ -245,10 +265,10 @@ func (m *NetworkManager) UpdateConfig(name string, ipv4 *IPv4Config, ipv6 *IPv6C
 		return NetworkNotFoundError
 	}
 	if ipv4 != nil {
-		network.IPv4 = *ipv4
+		network.IPv4Config = ipv4
 	}
 	if ipv6 != nil {
-		network.IPv6 = *ipv6
+		network.IPv6Config = ipv6
 	}
 	err := m.writeConfig()
 	if err != nil {

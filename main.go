@@ -90,15 +90,23 @@ func Program() {
 	}
 	// checking smb service
 	logger.Info("check smb service")
-	info, err := yousmb.DefaultClient.GetInfo()
+	//info, err := yousmb.DefaultClient.GetInfo()
+	//if err != nil {
+	//	logger.Fatal(err)
+	//}
+	//if info.Status == "running" {
+	//	logger.Info("SMB service check [pass]")
+	//} else {
+	//	logger.Fatal(errors.New("SMB service check [not pass]"))
+	//}
+	logrus.Info("connect to yousmb rpc service [connecting]")
+	err = yousmb.InitYouSMCRPCClient()
 	if err != nil {
-		logger.Fatal(err)
+		logrus.Fatal(err)
+		return
 	}
-	if info.Status == "running" {
-		logger.Info("SMB service check [pass]")
-	} else {
-		logger.Fatal(errors.New("SMB service check [not pass]"))
-	}
+	logrus.Info("connect to yousmb rpc service [success]")
+
 	go func() {
 		rpc.DefaultRPCServer.Run()
 	}()

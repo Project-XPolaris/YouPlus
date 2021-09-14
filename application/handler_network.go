@@ -3,6 +3,7 @@ package application
 import (
 	"github.com/allentom/haruka"
 	"github.com/projectxpolaris/youplus/service"
+	"net/http"
 )
 
 var networkStatusHandler haruka.RequestHandler = func(context *haruka.Context) {
@@ -18,5 +19,19 @@ type UpdateNetworkConfigRequestBody struct {
 }
 
 var updateNetworkConfig haruka.RequestHandler = func(context *haruka.Context) {
-
+	name := context.GetPathParameterAsString("name")
+	var requestBody UpdateNetworkConfigRequestBody
+	err := context.ParseJson(&requestBody)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.DefaultNetworkManager.UpdateConfig(name, requestBody.IPv4, requestBody.IPv6)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
 }

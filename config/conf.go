@@ -17,6 +17,7 @@ type AppConfig struct {
 	Addr       string `json:"addr"`
 	ApiKey     string `json:"api_key"`
 	YouSMBAddr string `json:"yousmb_addr"`
+	YouSMBRPC  string `json:"yousmb_rpc"`
 	Fstab      string `json:"fstab"`
 	NetConfig  string `json:"net_config"`
 	RPCAddr    string `json:"rpc_addr"`

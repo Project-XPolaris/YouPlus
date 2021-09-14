@@ -6,6 +6,13 @@ import (
 	"github.com/projectxpolaris/youplus/service"
 )
 
+var getDiskListHandler haruka.RequestHandler = func(context *haruka.Context) {
+	disks := service.ReadDiskList()
+	context.JSON(haruka.JSON{
+		"disks": disks,
+	})
+}
+
 var diskSmartHandler haruka.RequestHandler = func(context *haruka.Context) {
 	name := context.GetQueryString("name")
 	disk := service.GetDiskByName(name)

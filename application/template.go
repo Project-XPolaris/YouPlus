@@ -6,9 +6,11 @@ import (
 	"github.com/projectxpolaris/youplus/service"
 )
 
+const TimeLayout = "2006-01-02 15:04:05"
+
 type ZFSPoolTemplate struct {
 	Name string          `json:"name,omitempty"`
-	Tree ZFSTreeTemplate `json:"tree"`
+	Tree ZFSTreeTemplate `json:"tree,omitempty"`
 }
 
 func (t *ZFSPoolTemplate) Assign(pool libzfs.Pool) error {
@@ -75,10 +77,18 @@ func (t *ZFSTreeTemplate) Assign(tree *libzfs.VDevTree) {
 }
 
 type StorageTemplate struct {
-	Id    string `json:"id"`
-	Type  string `json:"type"`
-	Used  int64  `json:"used"`
-	Total int64  `json:"total"`
+	Id       string                   `json:"id"`
+	Type     string                   `json:"type"`
+	Used     int64                    `json:"used"`
+	Total    int64                    `json:"total"`
+	ZFS      *StorageZFSTemplate      `json:"zfs,omitempty"`
+	DiskPart *StorageDiskPartTemplate `json:"diskPart,omitempty"`
+}
+type StorageZFSTemplate struct {
+	Name string `json:"name"`
+}
+type StorageDiskPartTemplate struct {
+	Name string `json:"name"`
 }
 
 func (t *StorageTemplate) Assign(storage service.Storage) {
@@ -86,8 +96,14 @@ func (t *StorageTemplate) Assign(storage service.Storage) {
 	switch storage.(type) {
 	case *service.DiskPartStorage:
 		t.Type = "Parted"
+		diskPartStorage := storage.(*service.DiskPartStorage)
+		t.DiskPart = &StorageDiskPartTemplate{}
+		t.DiskPart.Name = diskPartStorage.Source
 	case *service.ZFSPoolStorage:
 		t.Type = "ZFSPool"
+		zfsStorage := storage.(*service.ZFSPoolStorage)
+		t.ZFS = &StorageZFSTemplate{}
+		t.ZFS.Name = zfsStorage.Name
 	}
 	t.Used, t.Total, _ = storage.GetUsage()
 }
@@ -172,4 +188,18 @@ func SerializerDatasetTemplates(datasets []libzfs.Dataset) []DatasetTemplate {
 		data = append(data, template)
 	}
 	return data
+}
+
+type SMBProcessStatusTemplate struct {
+	PID      string `json:"pid"`
+	Username string `json:"username"`
+	Group    string `json:"group"`
+	Machine  string `json:"machine"`
+}
+
+type SMBSharesStatusTemplate struct {
+	Service   string `json:"service"`
+	PID       string `json:"pid"`
+	Machine   string `json:"machine"`
+	ConnectAt string `json:"connectAt"`
 }

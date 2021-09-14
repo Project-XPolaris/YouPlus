@@ -143,7 +143,6 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 		template.InvalidGroups = SerializeGroups(shareFolderConfig.InvalidGroups)
 		template.ReadGroups = SerializeGroups(shareFolderConfig.ReadGroups)
 		template.WriteGroups = SerializeGroups(shareFolderConfig.WriteGroups)
-
 		shareFolders = append(shareFolders, template)
 	}
 	context.JSON(haruka.JSON{
@@ -191,5 +190,42 @@ var removeShareHandler haruka.RequestHandler = func(context *haruka.Context) {
 	}
 	context.JSON(haruka.JSON{
 		"success": true,
+	})
+}
+
+var getSMBStatusHandler haruka.RequestHandler = func(context *haruka.Context) {
+	status, err := service.GetSMBStatus()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	processList := make([]SMBProcessStatusTemplate, 0)
+	if status.Process != nil {
+		for _, process := range status.Process {
+			template := SMBProcessStatusTemplate{
+				PID:      *process.PID,
+				Username: *process.Username,
+				Group:    *process.Group,
+				Machine:  *process.Machine,
+			}
+			processList = append(processList, template)
+		}
+	}
+	sharesList := make([]SMBSharesStatusTemplate, 0)
+	if status.Shares != nil {
+		for _, share := range status.Shares {
+			template := SMBSharesStatusTemplate{
+				Service:   *share.Service,
+				PID:       *share.PID,
+				Machine:   *share.Machine,
+				ConnectAt: *share.ConnectAt,
+			}
+			sharesList = append(sharesList, template)
+		}
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+		"process": processList,
+		"shares":  sharesList,
 	})
 }

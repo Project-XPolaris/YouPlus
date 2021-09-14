@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/project-xpolaris/youplustoolkit/yousmb/rpc"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/utils"
 	"github.com/projectxpolaris/youplus/yousmb"
@@ -10,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var (
@@ -83,7 +86,7 @@ func getSMBUserAndUserGroupList(users []*database.User, groups []*database.UserG
 	return list
 }
 func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
-	properties := map[string]interface{}{
+	properties := map[string]string{
 		"path":           folder.Path,
 		"create mask":    "0775",
 		"directory mask": "0775",
@@ -99,21 +102,25 @@ func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 	if folder.Public {
 		properties["public"] = "yes"
 	}
-	response, err := yousmb.DefaultClient.GetConfig()
+	response, err := yousmb.DefaultYouSMBRPCClient.Client.GetConfig(yousmb.GetRPCTimeoutContext(), &rpc.Empty{})
 	if err != nil {
 		return err
 	}
+	if response.Sections == nil {
+		return errors.New("cannot get smb config")
+	}
 	for _, section := range response.Sections {
 		// update
-		if section.Name == folder.Name {
-			err = yousmb.DefaultClient.UpdateFolder(&yousmb.FolderRequestBody{Name: folder.Name, Properties: properties})
+		if *section.Name == folder.Name {
+			_, err = yousmb.DefaultYouSMBRPCClient.Client.UpdateFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.AddConfigMessage{Name: &folder.Name, Properties: properties})
 			return err
 		}
 	}
-	err = yousmb.DefaultClient.CreateNewShareWithRaw(map[string]interface{}{
-		"name":       folder.Name,
-		"properties": properties,
-	})
+	//create new
+	createReply, err := yousmb.DefaultYouSMBRPCClient.Client.AddFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.AddConfigMessage{Name: &folder.Name, Properties: properties})
+	if !createReply.GetSuccess() {
+		return errors.New(createReply.GetReason())
+	}
 	return err
 }
 func GetShareFolders() ([]*database.ShareFolder, error) {
@@ -291,9 +298,12 @@ func RemoveShare(id uint) error {
 	if err != nil {
 		return err
 	}
-	err = yousmb.DefaultClient.RemoveFolder(shareFolder.Name)
+	reply, err := yousmb.DefaultYouSMBRPCClient.Client.RemoveFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.RemoveConfigMessage{Name: &shareFolder.Name})
 	if err != nil {
 		return err
+	}
+	if !reply.GetSuccess() {
+		return errors.New(reply.GetReason())
 	}
 	err = database.Instance.Model(&database.ShareFolder{}).
 		Unscoped().
@@ -303,4 +313,13 @@ func RemoveShare(id uint) error {
 		return err
 	}
 	return nil
+}
+
+func GetSMBStatus() (*rpc.SMBStatusReply, error) {
+	timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	reply, err := yousmb.DefaultYouSMBRPCClient.Client.GetSMBStatus(timeout, &rpc.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	return reply, nil
 }

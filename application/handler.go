@@ -7,13 +7,6 @@ import (
 	"path/filepath"
 )
 
-var getDiskListHandler haruka.RequestHandler = func(context *haruka.Context) {
-	disks := service.ReadDiskList()
-	context.JSON(haruka.JSON{
-		"disks": disks,
-	})
-}
-
 type NewStorageRequest struct {
 	Source string `json:"source"`
 	Type   string `json:"type"`
