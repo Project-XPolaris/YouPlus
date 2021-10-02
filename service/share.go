@@ -98,6 +98,8 @@ func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 		"invalid users":  strings.Join(getSMBUserAndUserGroupList(folder.InvalidUsers, folder.InvalidGroups), ","),
 		"read list":      strings.Join(getSMBUserAndUserGroupList(folder.ReadUsers, folder.ReadGroups), ","),
 		"write list":     strings.Join(getSMBUserAndUserGroupList(folder.WriteUsers, folder.WriteGroups), ","),
+		"force user":     "root",
+		"force group":    "root",
 	}
 	if folder.Public {
 		properties["public"] = "yes"
