@@ -78,11 +78,13 @@ func (t *ZFSTreeTemplate) Assign(tree *libzfs.VDevTree) {
 
 type StorageTemplate struct {
 	Id       string                   `json:"id"`
+	Name     string                   `json:"name"`
 	Type     string                   `json:"type"`
 	Used     int64                    `json:"used"`
 	Total    int64                    `json:"total"`
 	ZFS      *StorageZFSTemplate      `json:"zfs,omitempty"`
 	DiskPart *StorageDiskPartTemplate `json:"diskPart,omitempty"`
+	Path     *StoragePathTemplate     `json:"path,omitempty"`
 }
 type StorageZFSTemplate struct {
 	Name string `json:"name"`
@@ -90,9 +92,13 @@ type StorageZFSTemplate struct {
 type StorageDiskPartTemplate struct {
 	Name string `json:"name"`
 }
+type StoragePathTemplate struct {
+	Path string `json:"path"`
+}
 
 func (t *StorageTemplate) Assign(storage service.Storage) {
 	t.Id = storage.GetId()
+	t.Name = storage.GetName()
 	switch storage.(type) {
 	case *service.DiskPartStorage:
 		t.Type = "Parted"
@@ -103,7 +109,13 @@ func (t *StorageTemplate) Assign(storage service.Storage) {
 		t.Type = "ZFSPool"
 		zfsStorage := storage.(*service.ZFSPoolStorage)
 		t.ZFS = &StorageZFSTemplate{}
-		t.ZFS.Name = zfsStorage.Name
+		t.ZFS.Name = zfsStorage.PoolName
+	case *service.PathStorage:
+		t.Type = "Path"
+		pathStorage := storage.(*service.PathStorage)
+		t.Path = &StoragePathTemplate{
+			Path: pathStorage.Path,
+		}
 	}
 	t.Used, t.Total, _ = storage.GetUsage()
 }
@@ -165,15 +177,29 @@ func SerializeGroups(groups []*database.UserGroup) []*UserGroupTemplate {
 	return data
 }
 
+type Props struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Source string `json:"source"`
+}
 type DatasetTemplate struct {
-	Pool          string `json:"pool"`
-	Path          string `json:"path"`
-	SnapshotCount int    `json:"snapshotCount,omitempty"`
+	Pool          string  `json:"pool"`
+	Path          string  `json:"path"`
+	SnapshotCount int     `json:"snapshotCount,omitempty"`
+	Props         []Props `json:"props,omitempty"`
 }
 
 func (t *DatasetTemplate) Assign(dataset *libzfs.Dataset) {
 	t.Pool = dataset.PoolName()
 	t.Path, _ = dataset.Path()
+	t.Props = make([]Props, 0)
+	for prop, property := range dataset.Properties {
+		t.Props = append(t.Props, Props{
+			Name:   libzfs.DatasetPropertyToName(prop),
+			Value:  property.Value,
+			Source: property.Source,
+		})
+	}
 	snapshots, err := dataset.Snapshots()
 	if err == nil {
 		t.SnapshotCount = len(snapshots)

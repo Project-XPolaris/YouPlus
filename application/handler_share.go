@@ -83,6 +83,9 @@ var getShareFolderList haruka.RequestHandler = func(context *haruka.Context) {
 		if len(shareFolderConfig.ZFSStorageId) != 0 {
 			sid = shareFolderConfig.ZFSStorageId
 		}
+		if len(shareFolderConfig.PathStorageId) != 0 {
+			sid = shareFolderConfig.PathStorageId
+		}
 		storage := service.DefaultStoragePool.GetStorageById(sid)
 		if storage == nil {
 			continue

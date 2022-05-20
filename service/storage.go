@@ -4,11 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/projectxpolaris/youplus/database"
-	"github.com/rs/xid"
-	"github.com/shirou/gopsutil/disk"
 	"github.com/sirupsen/logrus"
-	"os"
-	"path/filepath"
 )
 
 var StorageNotFoundError = errors.New("target storage not found")
@@ -39,7 +35,25 @@ func (p *StoragePool) LoadStorage() error {
 	}
 	for _, zfsStorage := range ZFSStorageList {
 		s := &ZFSPoolStorage{}
-		s.LoadFromSave(zfsStorage)
+		err = s.LoadFromSave(zfsStorage)
+		if err != nil {
+			logrus.Error(err)
+			continue
+		}
+		p.Storages = append(p.Storages, s)
+	}
+	var FolderStorageList []*database.FolderStorage
+	err = database.Instance.Find(&FolderStorageList).Error
+	if err != nil {
+		return err
+	}
+	for _, folderStorage := range FolderStorageList {
+		s := &PathStorage{}
+		err = s.LoadFromSave(folderStorage)
+		if err != nil {
+			logrus.Error(err)
+			continue
+		}
 		p.Storages = append(p.Storages, s)
 	}
 	StoragePoolLogger.Info(fmt.Sprintf("success load %d storages", len(p.Storages)))
@@ -62,6 +76,13 @@ func (p *StoragePool) NewStorage(source string, storageType string) error {
 	}
 	if storageType == "ZFSPool" {
 		storage, err := CreateZFSStorage(source)
+		if err != nil {
+			return err
+		}
+		p.Storages = append(p.Storages, storage)
+	}
+	if storageType == "Path" {
+		storage, err := CreatePathStorage(source)
 		if err != nil {
 			return err
 		}
@@ -109,123 +130,27 @@ func (p *StoragePool) GetStorageById(id string) Storage {
 	}
 	return nil
 }
-
-type Storage interface {
-	GetId() string
-	Remove() error
-	SaveData() error
-	GetRootPath() string
-	GetUsage() (used int64, free int64, err error)
-}
-
-type DiskPartStorage struct {
-	Id         string `json:"id"`
-	Source     string `json:"source"`
-	MountPoint string `json:"mount_point"`
-}
-
-func (s *DiskPartStorage) GetRootPath() string {
-	return s.MountPoint
-}
-
-func (s *DiskPartStorage) LoadFromSave(data *database.PartStorage) {
-	s.Id = data.ID
-	s.Source = data.Source
-	s.MountPoint = data.MountPoint
-}
-
-func (s *DiskPartStorage) SaveData() error {
-	rawData := map[string]interface{}{}
-	rawData["source"] = s.Source
-	rawData["mountPoint"] = s.MountPoint
-	return database.Instance.Model(&database.PartStorage{}).Where("id = ?", s.Id).Updates(rawData).Error
-}
-
-func (s *DiskPartStorage) GetId() string {
-	return s.Id
-}
-
-func (s *DiskPartStorage) Remove() error {
-	// unmount
-	err := DefaultFstab.RemoveMount(s.MountPoint)
-	if err != nil {
-		return err
+func (p *StoragePool) UpdateStorage(id string, option StorageUpdateOption) error {
+	storage := p.GetStorageById(id)
+	if storage == nil {
+		return StorageNotFoundError
 	}
-	err = DefaultFstab.Save()
-	if err != nil {
-		return err
-	}
-	err = DefaultFstab.Reload()
-	if err != nil {
-		return err
-	}
-	//clear mount folder
-	err = os.Remove(s.MountPoint)
+	err := storage.Update(option)
 	if err != nil {
 		return err
 	}
 	return nil
 }
-func (s *DiskPartStorage) GetUsage() (used int64, free int64, err error) {
-	part := GetPartByName(s.Source)
-	if part == nil {
-		return 0, 0, errors.New("unknown fs type")
-	}
-	stat, err := disk.Usage(s.Source)
-	if err != nil {
-		return 0, 0, err
-	}
-	return int64(stat.Used), int64(stat.Total), err
+
+type StorageUpdateOption struct {
+	Name string `json:"name"`
 }
-
-func NewDiskPartStorage(source string) (Storage, error) {
-	id := xid.New().String()
-	storage := &DiskPartStorage{
-		Id:         id,
-		Source:     source,
-		MountPoint: fmt.Sprintf(filepath.Join("mnt", id)),
-	}
-
-	//read fstype
-	part := GetPartByName(filepath.Base(source))
-	if part == nil {
-		return nil, errors.New("unknown fs type")
-	}
-	//init mount dir
-	err := os.MkdirAll(storage.MountPoint, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	option := &AddMountOption{
-		Spec:    storage.Source,
-		File:    storage.MountPoint,
-		VfsType: part.FSType,
-		MntOps: map[string]string{
-			"defaults": "",
-		},
-		Freq:   0,
-		PassNo: 0,
-	}
-	DefaultFstab.AddMount(option)
-	err = DefaultFstab.Save()
-	if err != nil {
-		return nil, err
-	}
-	err = DefaultFstab.Reload()
-	if err != nil {
-		return nil, err
-	}
-
-	//save
-	err = database.Instance.Save(&database.PartStorage{
-		ID:           id,
-		MountPoint:   storage.MountPoint,
-		Name:         filepath.Base(storage.MountPoint),
-		Source:       storage.Source,
-		ShareFolders: nil,
-	}).Error
-	if err != nil {
-		return nil, err
-	}
-	return storage, nil
+type Storage interface {
+	GetId() string
+	Remove() error
+	SaveData() error
+	GetRootPath() string
+	GetName() string
+	GetUsage() (used int64, free int64, err error)
+	Update(option StorageUpdateOption) error
 }

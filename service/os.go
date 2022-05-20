@@ -1,15 +1,15 @@
 package service
 
-import "os/exec"
+import (
+	"syscall"
+)
 
 func Shutdown() error {
-	cmd := exec.Command("shutdown", "-h", "now")
-	err := cmd.Start()
+	err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_POWER_OFF)
 	return err
 }
 
 func Reboot() error {
-	cmd := exec.Command("reboot")
-	err := cmd.Start()
+	err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
 	return err
 }

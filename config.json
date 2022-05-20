@@ -5,5 +5,8 @@
   "yousmb_rpc": "localhost:50057",
   "fstab": "./fstab",
   "net_config": "/etc/netplan/youplus.yaml",
-  "rpc_addr": ":50055"
+  "rpc_addr": ":50055",
+  "database": {
+    "type": "sqlite"
+  }
 }

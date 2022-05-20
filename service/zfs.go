@@ -91,12 +91,12 @@ func (m *ZFSManager) CreatePool(name string, vdev libzfs.VDevTree) error {
 	}
 	pool.Close()
 	dss, err := libzfs.DatasetOpenAll()
-
 	for _, dataset := range dss {
 		if dataset.PoolName() == name {
 			dataset.Mount("", 0)
 		}
 	}
+
 	return nil
 }
 func (m *ZFSManager) GetPoolCount() (int, error) {
@@ -183,7 +183,17 @@ func (m *ZFSManager) DeleteSnapshot(datasetPath string, snapshotName string) err
 	return dataset.Destroy(true)
 }
 
-func (m *ZFSManager) GetAllDataset() ([]libzfs.Dataset, error) {
+type DatasetQueryFilter struct {
+	Pool string `hsource:"query" hname:"pool"`
+}
+
+func (f *DatasetQueryFilter) isValid(dataset libzfs.Dataset) bool {
+	if f.Pool != "" && f.Pool != dataset.PoolName() {
+		return false
+	}
+	return true
+}
+func (m *ZFSManager) GetAllDataset(filter DatasetQueryFilter) ([]libzfs.Dataset, error) {
 	queue, err := libzfs.DatasetOpenAll()
 	if err != nil {
 		return nil, err
@@ -192,9 +202,11 @@ func (m *ZFSManager) GetAllDataset() ([]libzfs.Dataset, error) {
 	for len(queue) != 0 {
 		dataset := queue[0]
 		if !dataset.IsSnapshot() {
-			result = append(result, dataset)
 			if dataset.Children != nil {
 				queue = append(queue, dataset.Children...)
+			}
+			if filter.isValid(dataset) {
+				result = append(result, dataset)
 			}
 		}
 		if len(queue) > 0 {
@@ -204,4 +216,83 @@ func (m *ZFSManager) GetAllDataset() ([]libzfs.Dataset, error) {
 		}
 	}
 	return result, nil
+}
+
+type ZFSPoolListFilter struct {
+	Name  string   `hsource:"query" hname:"name"`
+	Disks []string `hsource:"query" hname:"disks"`
+}
+
+func CheckDiskInVdevTree(disk string, pool libzfs.Pool) (bool, error) {
+	// walk the tree
+	vt, err := pool.VDevTree()
+	if err != nil {
+		return false, err
+	}
+	queue := make([]libzfs.VDevTree, 0)
+	queue = append(queue, vt)
+	for len(queue) > 0 {
+		curVt := queue[0]
+		queue = queue[1:]
+		if curVt.Name == disk {
+			return true, nil
+		}
+		queue = append(queue, curVt.Devices...)
+		queue = append(queue, curVt.Spares...)
+		queue = append(queue, curVt.L2Cache...)
+	}
+	return false, err
+}
+func (m *ZFSManager) GetPoolList(filter *ZFSPoolListFilter) ([]libzfs.Pool, error) {
+	result := make([]libzfs.Pool, 0)
+	pools, err := libzfs.PoolOpenAll()
+	if err != nil {
+		return nil, err
+	}
+	for _, pool := range pools {
+		if len(filter.Name) > 0 {
+			name, err := pool.Name()
+			if err != nil {
+				return nil, err
+			}
+			if name != filter.Name {
+				continue
+			}
+		}
+		if len(filter.Disks) > 0 {
+			isExist := false
+			for _, disk := range filter.Disks {
+				exist, err := CheckDiskInVdevTree(disk, pool)
+				if err != nil {
+					return nil, err
+				}
+				if exist {
+					isExist = true
+					break
+				}
+			}
+			if !isExist {
+				continue
+			}
+		}
+		result = append(result, pool)
+	}
+	return result, nil
+}
+
+func (m *ZFSManager) GetPoolByName(name string) (*libzfs.Pool, error) {
+	pools, err := libzfs.PoolOpenAll()
+	if err != nil {
+		return nil, err
+	}
+	for _, pool := range pools {
+		poolName, err := pool.Name()
+		if err != nil {
+			return nil, err
+		}
+		if name == poolName {
+			return &pool, nil
+		}
+	}
+	return nil, nil
 }

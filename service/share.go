@@ -51,6 +51,8 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 		shareFolder.ZFSStorageId = storage.GetId()
 	case *DiskPartStorage:
 		shareFolder.PartStorageId = storage.GetId()
+	case *PathStorage:
+		shareFolder.PathStorageId = storage.GetId()
 	}
 	err = SyncShareFolderOptionToSMB(&shareFolder)
 	if err != nil {

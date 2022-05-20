@@ -11,6 +11,26 @@ type ZFSPoolStorage struct {
 	Id         string `json:"id"`
 	Name       string `json:"name"`
 	MountPoint string `json:"mount_point"`
+	PoolName   string
+}
+
+func (z *ZFSPoolStorage) GetName() string {
+	return z.Name
+}
+
+func (z *ZFSPoolStorage) Update(option StorageUpdateOption) error {
+	rawData := map[string]interface{}{}
+	if option.Name != "" {
+		rawData["Name"] = option.Name
+	}
+	err := database.Instance.Model(&database.ZFSStorage{}).Where("id = ?", z.Id).Updates(rawData).Error
+	if err != nil {
+		return err
+	}
+	if option.Name != "" {
+		z.Name = option.Name
+	}
+	return nil
 }
 
 func (z *ZFSPoolStorage) SaveData() error {
@@ -33,7 +53,11 @@ func (z *ZFSPoolStorage) Remove() error {
 }
 
 func (z *ZFSPoolStorage) GetUsage() (used int64, free int64, err error) {
-	pool, err := libzfs.PoolOpen(z.Name)
+	dataset, err := libzfs.DatasetOpen(z.MountPoint)
+	if err != nil {
+		return 0, 0, err
+	}
+	pool, err := dataset.Pool()
 	if err != nil {
 		return 0, 0, err
 	}
@@ -45,17 +69,34 @@ func (z *ZFSPoolStorage) GetUsage() (used int64, free int64, err error) {
 
 }
 
-func (z *ZFSPoolStorage) LoadFromSave(data *database.ZFSStorage) {
+func (z *ZFSPoolStorage) LoadFromSave(data *database.ZFSStorage) error {
+	dataset, err := libzfs.DatasetOpen(data.MountPoint)
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	pool, err := dataset.Pool()
+	if err != nil {
+		return err
+	}
+	poolName, err := pool.Name()
+	if err != nil {
+		return err
+	}
 	z.Id = data.ID
 	z.Name = data.Name
 	z.MountPoint = data.MountPoint
+	z.PoolName = poolName
+	return nil
 }
 
-func CreateZFSStorage(poolName string) (Storage, error) {
+func CreateZFSStorage(datasetPath string) (Storage, error) {
 	s := &ZFSPoolStorage{
 		Id:         xid.New().String(),
-		Name:       path.Base(poolName),
-		MountPoint: poolName,
+		Name:       path.Base(datasetPath),
+		MountPoint: datasetPath,
 	}
 	err := database.Instance.Save(&database.ZFSStorage{ID: s.Id, Name: s.Name, MountPoint: s.MountPoint}).Error
 	if err != nil {

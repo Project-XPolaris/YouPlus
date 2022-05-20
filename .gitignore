@@ -1,3 +1,5 @@
 .idea/
 local_*_test.go
 pack-output/
+/dev*_config.json
+/dev*fstab

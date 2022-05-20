@@ -1,8 +1,9 @@
 package application
 
 import (
+	"errors"
 	"github.com/allentom/haruka"
-	libzfs "github.com/bicomsystems/go-libzfs"
+	zfs "github.com/bicomsystems/go-libzfs"
 	"github.com/projectxpolaris/youplus/service"
 	"net/http"
 )
@@ -50,26 +51,49 @@ var createZFSPoolWithNodeHandler haruka.RequestHandler = func(context *haruka.Co
 		"success": true,
 	})
 }
+
 var getZFSPoolListHandler haruka.RequestHandler = func(context *haruka.Context) {
-	data := make([]*ZFSPoolTemplate, 0)
-	pools, err := libzfs.PoolOpenAll()
+	filter := service.ZFSPoolListFilter{}
+	err := context.BindingInput(&filter)
 	if err != nil {
-		context.JSON(haruka.JSON{
-			"pools": []string{},
-		})
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
 		return
 	}
+	pools, err := service.DefaultZFSManager.GetPoolList(&filter)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	defer zfs.PoolCloseAll(pools)
+	data := make([]*ZFSPoolTemplate, 0)
 	for _, pool := range pools {
 		template := &ZFSPoolTemplate{}
 		template.Assign(pool)
 		data = append(data, template)
 	}
-	libzfs.PoolCloseAll(pools)
 	context.JSON(haruka.JSON{
 		"pools": data,
 	})
 }
-
+var getZFSPoolHandler haruka.RequestHandler = func(context *haruka.Context) {
+	name := context.GetPathParameterAsString("name")
+	pool, err := service.DefaultZFSManager.GetPoolByName(name)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	if pool == nil {
+		AbortErrorWithStatus(errors.New("pool not found"), context, http.StatusNotFound)
+		return
+	}
+	template := &ZFSPoolTemplate{}
+	template.Assign(*pool)
+	pool.Close()
+	context.JSON(haruka.JSON{
+		"data":    template,
+		"success": "true",
+	})
+}
 var removePoolHandler haruka.RequestHandler = func(context *haruka.Context) {
 	name := context.GetQueryString("name")
 	err := service.DefaultZFSManager.RemovePool(name)
@@ -83,7 +107,13 @@ var removePoolHandler haruka.RequestHandler = func(context *haruka.Context) {
 }
 
 var datasetListHandler haruka.RequestHandler = func(context *haruka.Context) {
-	datasets, err := service.DefaultZFSManager.GetAllDataset()
+	filter := service.DatasetQueryFilter{}
+	err := context.BindingInput(&filter)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	datasets, err := service.DefaultZFSManager.GetAllDataset(filter)
 	if err != nil {
 		AbortErrorWithStatus(err, context, 500)
 		return

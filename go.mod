@@ -8,7 +8,7 @@ require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/allentom/haruka v0.0.0-20210318094355-e84d0a169cfa
 	github.com/amoghe/go-crypt v0.0.0-20191109212615-b2ff80594b7f
-	github.com/bicomsystems/go-libzfs v0.3.5
+	github.com/bicomsystems/go-libzfs v0.4.0
 	github.com/containerd/containerd v1.4.3 // indirect
 	github.com/d-tux/go-fstab v0.0.0-20141204152952-eb4090f26517
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -16,10 +16,10 @@ require (
 	github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/kardianos/service v1.2.0
+	github.com/kr/pretty v0.3.0 // indirect
 	github.com/mackerelio/go-osstat v0.2.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/mholt/archiver/v3 v3.5.0
@@ -34,16 +34,17 @@ require (
 	github.com/rs/xid v1.3.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.1+incompatible
+	github.com/shirou/gopsutil/v3 v3.22.4
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/zcalusic/sysinfo v0.0.0-20210226105846-b810d137e525
-	golang.org/x/sys v0.0.0-20210402192133-700132347e07 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
 	google.golang.org/grpc v1.39.0
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gorm.io/driver/mysql v1.3.3
 	gorm.io/driver/sqlite v1.1.4
-	gorm.io/gorm v1.21.7
+	gorm.io/gorm v1.23.1
 	gotest.tools/v3 v3.0.3 // indirect
 )

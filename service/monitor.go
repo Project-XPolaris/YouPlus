@@ -55,7 +55,6 @@ func (m *SystemMonitor) Run() {
 				Total:  now.Total - before.Total,
 				User:   now.User - before.User,
 				System: now.System - before.System,
-				Iowait: now.Iowait - before.Iowait,
 			}
 			before = now
 			// read ram info

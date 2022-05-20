@@ -114,6 +114,9 @@ func (m *AddressConverterManager) ReadDir(target string, username string) ([]Pat
 		}
 	}
 	realPath := filepath.Join(entity.Path, filepath.Join(pathParts[1:]...))
+	if !strings.HasPrefix(realPath, "/") {
+		realPath = "/" + realPath
+	}
 	items, err := os.ReadDir(realPath)
 	if err != nil {
 		return nil, err

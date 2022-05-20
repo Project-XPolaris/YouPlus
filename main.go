@@ -27,7 +27,7 @@ func initService(workDir string) error {
 	}
 	return nil
 }
-func Program() {
+func InitEnv() {
 	logger := logrus.WithFields(logrus.Fields{
 		"scope": "boot",
 	})
@@ -42,17 +42,29 @@ func Program() {
 		logger.Fatal(err)
 	}
 
-	logger.Info("run monitor")
-	service.DefaultMonitor.Run()
-
 	logger.Info("load user")
 	err = service.DefaultUserManager.LoadUser()
 	if err != nil {
 		logger.Fatal(err)
 	}
-
+	logrus.Info("connect to yousmb rpc service [connecting]")
+	err = yousmb.InitYouSMCRPCClient()
+	if err != nil {
+		logrus.Fatal(err)
+		return
+	}
+	logrus.Info("connect to yousmb rpc service [success]")
+}
+func Program() {
+	logger := logrus.WithFields(logrus.Fields{
+		"scope": "boot",
+	})
+	// config
+	InitEnv()
+	logger.Info("load init monitor")
+	service.DefaultMonitor.Run()
 	logger.Info("load network manager")
-	err = service.DefaultNetworkManager.Load()
+	err := service.DefaultNetworkManager.Load()
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -99,14 +111,6 @@ func Program() {
 	//} else {
 	//	logger.Fatal(errors.New("SMB service check [not pass]"))
 	//}
-	logrus.Info("connect to yousmb rpc service [connecting]")
-	err = yousmb.InitYouSMCRPCClient()
-	if err != nil {
-		logrus.Fatal(err)
-		return
-	}
-	logrus.Info("connect to yousmb rpc service [success]")
-
 	go func() {
 		rpc.DefaultRPCServer.Run()
 	}()
@@ -318,10 +322,7 @@ func RunApp() {
 							},
 						},
 						Action: func(context *cli.Context) error {
-							err := database.ConnectToDatabase()
-							if err != nil {
-								return err
-							}
+							InitEnv()
 							CreateAdmin(context.String("name"), context.String("password"), context.Bool("only"))
 							return nil
 						},

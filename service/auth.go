@@ -35,7 +35,6 @@ func UserLogin(username string, password string, admin bool) (string, string, er
 		ExpiresAt: time.Now().Add(15 * time.Hour * 24).Unix(),
 		Issuer:    "YouPlusService",
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := token.SignedString([]byte(config.Config.ApiKey))
 	if err != nil {

@@ -14,3 +14,9 @@ type PartStorage struct {
 	Source       string
 	ShareFolders []*ShareFolder `gorm:"foreignKey:PartStorageId"`
 }
+
+type FolderStorage struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Path string `json:"path"`
+}

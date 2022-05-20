@@ -11,6 +11,8 @@ type ShareFolder struct {
 	ZFSStorage    *ZFSStorage
 	PartStorageId string
 	PartStorage   *ZFSStorage
+	PathStorageId string
+	PathStorage   *FolderStorage
 	ValidUsers    []*User      `gorm:"many2many:user_validFolders;"`
 	InvalidUsers  []*User      `gorm:"many2many:user_invalidFolders;"`
 	WriteUsers    []*User      `gorm:"many2many:user_writeFolders;"`

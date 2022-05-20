@@ -52,7 +52,19 @@ var removeStorage haruka.RequestHandler = func(context *haruka.Context) {
 		"success": true,
 	})
 }
-
+var updateStorageHandler haruka.RequestHandler = func(context *haruka.Context) {
+	id := context.GetPathParameterAsString("id")
+	option := service.StorageUpdateOption{}
+	err := context.ParseJson(&option)
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	err = service.DefaultStoragePool.UpdateStorage(id, option)
+	context.JSON(haruka.JSON{
+		"success": true,
+	})
+}
 var appIconHandler haruka.RequestHandler = func(context *haruka.Context) {
 	id, err := context.GetPathParameterAsInt("id")
 	if err != nil {
