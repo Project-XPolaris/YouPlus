@@ -381,10 +381,11 @@ func GetUserCount() (count int64, err error) {
 }
 
 type UserShareFolder struct {
-	Name   string `json:"name"`
-	Access bool   `json:"access"`
-	Read   bool   `json:"read"`
-	Write  bool   `json:"write"`
+	Name   string                `json:"name"`
+	Folder *database.ShareFolder `json:"-"`
+	Access bool                  `json:"access"`
+	Read   bool                  `json:"read"`
+	Write  bool                  `json:"write"`
 }
 
 func GetUserShareList(user *database.User) ([]*UserShareFolder, error) {
@@ -413,6 +414,7 @@ func GetUserShareList(user *database.User) ([]*UserShareFolder, error) {
 			Name:   folder.Name,
 			Read:   true,
 			Access: true,
+			Folder: folder,
 		}
 		if folder.Readonly {
 			if inWriteUsers {
@@ -433,4 +435,16 @@ func GetUserShareList(user *database.User) ([]*UserShareFolder, error) {
 		userFolders = append(userFolders, userFolder)
 	}
 	return userFolders, nil
+}
+
+func GetUserByUsernameWithPassword(username string, password string) (*database.User, error) {
+	var user database.User
+	err := database.Instance.Where("username = ?", username).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	if !DefaultUserManager.CheckPassword(user.Username, password) {
+		return nil, errors.New("password error")
+	}
+	return &user, nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 )
 
 var StorageNotFoundError = errors.New("target storage not found")
@@ -153,4 +154,5 @@ type Storage interface {
 	GetName() string
 	GetUsage() (used int64, free int64, err error)
 	Update(option StorageUpdateOption) error
+	GetFS() afero.Fs
 }

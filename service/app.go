@@ -421,7 +421,7 @@ func (p *TaskPool) NewInstallAppTask(packagePath string, callback InstallAppCall
 			}
 			ulistArg = rawArg.(UlistArg)
 			if ulistArg.Type == "path" {
-				realPath, err := DefaultAddressConverterManager.GetRealPath(arg.Value, username)
+				realPath, err := DefaultFileSystem.GetRealPath(arg.Value)
 				if err != nil {
 					task.OnError(err)
 					logrus.WithFields(logrus.Fields{

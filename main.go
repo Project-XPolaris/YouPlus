@@ -84,9 +84,8 @@ func Program() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	// loading path converter
-	logger.Info("load converter")
-	err = service.DefaultAddressConverterManager.Load()
+	logger.Info("init filesystem")
+	err = service.InitFileSystem()
 	if err != nil {
 		logger.Fatal(err)
 	}

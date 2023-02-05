@@ -6,15 +6,21 @@ import (
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/rs/xid"
 	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/spf13/afero"
 	"os"
 	"path/filepath"
 )
 
 type DiskPartStorage struct {
-	Id         string `json:"id"`
-	Name       string `json:"name"`
-	Source     string `json:"source"`
-	MountPoint string `json:"mount_point"`
+	Id         string   `json:"id"`
+	Name       string   `json:"name"`
+	Source     string   `json:"source"`
+	MountPoint string   `json:"mount_point"`
+	Fs         afero.Fs `json:"-"`
+}
+
+func (s *DiskPartStorage) GetFS() afero.Fs {
+	return s.Fs
 }
 
 func (s *DiskPartStorage) GetName() string {
@@ -45,6 +51,7 @@ func (s *DiskPartStorage) LoadFromSave(data *database.PartStorage) {
 	s.Source = data.Source
 	s.MountPoint = data.MountPoint
 	s.Name = data.Name
+	s.Fs = afero.NewBasePathFs(afero.NewOsFs(), s.MountPoint)
 }
 
 func (s *DiskPartStorage) SaveData() error {

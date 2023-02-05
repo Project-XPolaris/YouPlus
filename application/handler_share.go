@@ -32,7 +32,7 @@ var createShareHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
-	err = service.DefaultAddressConverterManager.Load()
+	err = service.InitFileSystem()
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
@@ -165,7 +165,7 @@ var updateShareFolder haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
-	err = service.DefaultAddressConverterManager.Load()
+	err = service.InitFileSystem()
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
@@ -186,7 +186,7 @@ var removeShareHandler haruka.RequestHandler = func(context *haruka.Context) {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return
 	}
-	err = service.DefaultAddressConverterManager.Load()
+	err = service.InitFileSystem()
 	if err != nil {
 		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
 		return

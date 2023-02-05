@@ -34,12 +34,14 @@ func CreateNewShareFolder(option *NewShareFolderOption) error {
 	}
 	// create share directory
 	shareFolderPath := filepath.Join(storage.GetRootPath(), option.Name)
+	if !strings.HasPrefix(shareFolderPath, "/") {
+		shareFolderPath = "/" + shareFolderPath
+	}
 	err := os.MkdirAll(shareFolderPath, os.ModePerm)
 	if err != nil {
 		return err
 	}
 	// create share
-
 	shareFolder := database.ShareFolder{
 		Name:   option.Name,
 		Public: option.Public,

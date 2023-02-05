@@ -5,6 +5,7 @@ import (
 	"github.com/allentom/haruka/middleware"
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/rs/cors"
+	"net/http"
 	"strings"
 )
 
@@ -75,7 +76,25 @@ func RunApplication() {
 	e.Router.GET("/entries", getEntityList)
 	e.Router.GET("/smb/status", getSMBStatusHandler)
 	e.Router.AddHandler("/notification", notificationSocketHandler)
-	e.Router.HandlerRouter.PathPrefix("/").HandlerFunc(gatewayHandler)
+	//e.Router.GET("/fs/create", fsCreateHandler)
+	//e.Router.GET("/fs/mkdir", fsMkdirHandler)
+	//e.Router.GET("/fs/mkdirall", fsMkdirAllHandler)
+	//e.Router.GET("/fs/open", openFileHandler)
+	//e.Router.GET("/fs/remove", fsRemoveHandler)
+	//e.Router.GET("/fs/removeall", fsRemoveAllHandler)
+	//e.Router.GET("/fs/rename", fsRenameHandler)
+	//e.Router.GET("/fs/file/read", fsReadByteHandler)
+	//e.Router.POST("/fs/file/write", fsWriteByteHandler)
+	//e.Router.GET("/fs/file/readdir", fsReadDirHandler)
+	//e.Router.GET("/fs/file/truncate", fsTruncateHandler)
+	e.Router.HandlerRouter.PathPrefix("/dav").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		ctx := e.Router.MakeHandlerContext(writer, request, "/dav")
+		if ctx != nil {
+			webdavHandler(ctx)
+		}
+	})
+	//e.Router.HandlerRouter.PathPrefix("/").HandlerFunc(gatewayHandler)
+
 	e.UseCors(cors.AllowAll())
 	e.UseMiddleware(middleware.NewJWTMiddleware(&middleware.NewJWTMiddlewareOption{
 		ReadTokenString: func(ctx *haruka.Context) string {

@@ -4,6 +4,7 @@ import (
 	libzfs "github.com/bicomsystems/go-libzfs"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/rs/xid"
+	"github.com/spf13/afero"
 	"path"
 )
 
@@ -12,6 +13,11 @@ type ZFSPoolStorage struct {
 	Name       string `json:"name"`
 	MountPoint string `json:"mount_point"`
 	PoolName   string
+	Fs         afero.Fs
+}
+
+func (z *ZFSPoolStorage) GetFS() afero.Fs {
+	return z.Fs
 }
 
 func (z *ZFSPoolStorage) GetName() string {
@@ -41,7 +47,7 @@ func (z *ZFSPoolStorage) SaveData() error {
 }
 
 func (z *ZFSPoolStorage) GetRootPath() string {
-	return z.MountPoint
+	return "/" + z.MountPoint
 }
 
 func (z *ZFSPoolStorage) GetId() string {
@@ -89,6 +95,7 @@ func (z *ZFSPoolStorage) LoadFromSave(data *database.ZFSStorage) error {
 	z.Name = data.Name
 	z.MountPoint = data.MountPoint
 	z.PoolName = poolName
+	z.Fs = afero.NewBasePathFs(afero.NewOsFs(), z.GetRootPath())
 	return nil
 }
 

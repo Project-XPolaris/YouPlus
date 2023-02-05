@@ -4,13 +4,19 @@ import (
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/rs/xid"
 	"github.com/shirou/gopsutil/disk"
+	"github.com/spf13/afero"
 	"path/filepath"
 )
 
 type PathStorage struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Id   string   `json:"id"`
+	Name string   `json:"name"`
+	Path string   `json:"path"`
+	Fs   afero.Fs `json:"-"`
+}
+
+func (s *PathStorage) GetFS() afero.Fs {
+	return s.Fs
 }
 
 func (s *PathStorage) GetId() string {
@@ -59,6 +65,7 @@ func (s *PathStorage) LoadFromSave(storage *database.FolderStorage) error {
 	s.Id = storage.ID
 	s.Name = storage.Name
 	s.Path = storage.Path
+	s.Fs = afero.NewBasePathFs(afero.NewOsFs(), s.Path)
 	return nil
 }
 func CreatePathStorage(path string) (*PathStorage, error) {

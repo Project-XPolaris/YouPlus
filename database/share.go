@@ -37,3 +37,16 @@ func CountShareFolderByName(name string) (int64, error) {
 	err := Instance.Model(&ShareFolder{}).Where("name = ?", name).Count(&count).Error
 	return count, err
 }
+
+func (f *ShareFolder) GetStorageId() string {
+	if len(f.ZFSStorageId) > 0 {
+		return f.ZFSStorageId
+	}
+	if len(f.PartStorageId) > 0 {
+		return f.PathStorageId
+	}
+	if len(f.PathStorageId) > 0 {
+		return f.PathStorageId
+	}
+	return ""
+}
