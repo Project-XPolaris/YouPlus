@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/projectxpolaris/youplus/netplan"
 	"github.com/projectxpolaris/youplus/utils"
@@ -191,6 +192,7 @@ func (m *NetworkManager) Load() error {
 		for _, findInterface := range ifaces {
 			if findInterface.Name == networkInterface.Name {
 				iface = &findInterface
+				break
 			}
 		}
 		if iface != nil {
@@ -200,6 +202,7 @@ func (m *NetworkManager) Load() error {
 			}
 			for _, addr := range addrs {
 				ip, _, err := net.ParseCIDR(addr.String())
+				fmt.Println(addr.String())
 				if err != nil {
 					continue
 				}

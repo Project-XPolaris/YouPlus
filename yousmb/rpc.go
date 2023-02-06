@@ -12,14 +12,16 @@ var DefaultYouSMBRPCClient *rpc.YouSMBRPCClient
 
 func InitYouSMCRPCClient() error {
 	client := rpc.NewYouSMBRPCClient(config.Config.YouSMBRPC)
-	client.KeepAlive = true
-	client.MaxRetry = 99999999
-	err := client.Connect(context.Background())
+	err := client.Init()
+	if err != nil {
+		return err
+	}
+	rpcClient, _, err := client.GetClient()
 	if err != nil {
 		return err
 	}
 	DefaultYouSMBRPCClient = client
-	infoReply, err := client.Client.GetInfo(GetRPCTimeoutContext(), &rpc.Empty{})
+	infoReply, err := rpcClient.GetInfo(GetRPCTimeoutContext(), &rpc.Empty{})
 	if err != nil {
 		return err
 	}
@@ -32,4 +34,13 @@ func InitYouSMCRPCClient() error {
 func GetRPCTimeoutContext() context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
 	return ctx
+}
+
+func ExecWithRPCClient(fn func(client rpc.YouSMBServiceClient) error) error {
+	client, conn, err := DefaultYouSMBRPCClient.GetClient()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return fn(client)
 }

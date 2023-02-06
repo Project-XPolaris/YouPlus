@@ -96,38 +96,59 @@ func SyncShareFolderOptionToSMB(folder *database.ShareFolder) error {
 		"directory mask": "0775",
 		"read only":      utils.GetSmbBoolText(folder.Readonly),
 		"available":      utils.GetSmbBoolText(folder.Enable),
-		"browseable":     "yes",
+		"browseable":     utils.GetSmbBoolText(folder.Enable),
 		"public":         utils.GetSmbBoolText(folder.Public),
-		"valid users":    strings.Join(getSMBUserAndUserGroupList(folder.ValidUsers, folder.ValidGroups), ","),
-		"invalid users":  strings.Join(getSMBUserAndUserGroupList(folder.InvalidUsers, folder.InvalidGroups), ","),
-		"read list":      strings.Join(getSMBUserAndUserGroupList(folder.ReadUsers, folder.ReadGroups), ","),
-		"write list":     strings.Join(getSMBUserAndUserGroupList(folder.WriteUsers, folder.WriteGroups), ","),
 		"force user":     "root",
 		"force group":    "root",
+	}
+	validUsers := getSMBUserAndUserGroupList(folder.ValidUsers, folder.ValidGroups)
+	if len(validUsers) > 0 {
+		properties["valid users"] = strings.Join(validUsers, ",")
+	}
+	invalidUsers := getSMBUserAndUserGroupList(folder.InvalidUsers, folder.InvalidGroups)
+	if len(invalidUsers) > 0 {
+		properties["invalid users"] = strings.Join(invalidUsers, ",")
+	}
+	readUsers := getSMBUserAndUserGroupList(folder.ReadUsers, folder.ReadGroups)
+	if len(readUsers) > 0 {
+		properties["read list"] = strings.Join(readUsers, ",")
+	}
+	writeUsers := getSMBUserAndUserGroupList(folder.WriteUsers, folder.WriteGroups)
+	if len(writeUsers) > 0 {
+		properties["write list"] = strings.Join(writeUsers, ",")
 	}
 	if folder.Public {
 		properties["public"] = "yes"
 	}
-	response, err := yousmb.DefaultYouSMBRPCClient.Client.GetConfig(yousmb.GetRPCTimeoutContext(), &rpc.Empty{})
+	err := yousmb.ExecWithRPCClient(func(client rpc.YouSMBServiceClient) error {
+		response, err := client.GetConfig(yousmb.GetRPCTimeoutContext(), &rpc.Empty{})
+		if err != nil {
+			return err
+		}
+		if response.Sections == nil {
+			return errors.New("cannot get smb config")
+		}
+		for _, section := range response.Sections {
+			// update
+			if *section.Name == folder.Name {
+				_, err = client.UpdateFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.AddConfigMessage{Name: &folder.Name, Properties: properties})
+				return err
+			}
+		}
+		//create new
+		createReply, err := client.AddFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.AddConfigMessage{Name: &folder.Name, Properties: properties})
+		if !createReply.GetSuccess() {
+			return errors.New(createReply.GetReason())
+		}
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-	if response.Sections == nil {
-		return errors.New("cannot get smb config")
-	}
-	for _, section := range response.Sections {
-		// update
-		if *section.Name == folder.Name {
-			_, err = yousmb.DefaultYouSMBRPCClient.Client.UpdateFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.AddConfigMessage{Name: &folder.Name, Properties: properties})
-			return err
-		}
-	}
-	//create new
-	createReply, err := yousmb.DefaultYouSMBRPCClient.Client.AddFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.AddConfigMessage{Name: &folder.Name, Properties: properties})
-	if !createReply.GetSuccess() {
-		return errors.New(createReply.GetReason())
-	}
-	return err
+	return nil
 }
 func GetShareFolders() ([]*database.ShareFolder, error) {
 	var folders []*database.ShareFolder
@@ -304,13 +325,20 @@ func RemoveShare(id uint) error {
 	if err != nil {
 		return err
 	}
-	reply, err := yousmb.DefaultYouSMBRPCClient.Client.RemoveFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.RemoveConfigMessage{Name: &shareFolder.Name})
+	err = yousmb.ExecWithRPCClient(func(client rpc.YouSMBServiceClient) error {
+		reply, err := client.RemoveFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.RemoveConfigMessage{Name: &shareFolder.Name})
+		if err != nil {
+			return err
+		}
+		if !reply.GetSuccess() {
+			return errors.New(reply.GetReason())
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-	if !reply.GetSuccess() {
-		return errors.New(reply.GetReason())
-	}
+
 	err = database.Instance.Model(&database.ShareFolder{}).
 		Unscoped().
 		Delete(&database.ShareFolder{Model: gorm.Model{ID: shareFolder.ID}}).
@@ -323,7 +351,15 @@ func RemoveShare(id uint) error {
 
 func GetSMBStatus() (*rpc.SMBStatusReply, error) {
 	timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	reply, err := yousmb.DefaultYouSMBRPCClient.Client.GetSMBStatus(timeout, &rpc.Empty{})
+	var reply *rpc.SMBStatusReply
+	err := yousmb.ExecWithRPCClient(func(client rpc.YouSMBServiceClient) error {
+		var err error
+		reply, err = client.GetSMBStatus(timeout, &rpc.Empty{})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}

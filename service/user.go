@@ -244,16 +244,23 @@ func (m *UserManager) NewUser(username string, password string, only bool) error
 	}
 	// add smb user
 	if !only {
-		reply, err := yousmb.DefaultYouSMBRPCClient.Client.AddUser(yousmb.GetRPCTimeoutContext(), &rpc.AddUserMessage{
-			Username: &username,
-			Password: &password,
+		err = yousmb.ExecWithRPCClient(func(client rpc.YouSMBServiceClient) error {
+			reply, err := client.AddUser(yousmb.GetRPCTimeoutContext(), &rpc.AddUserMessage{
+				Username: &username,
+				Password: &password,
+			})
+			if err != nil {
+				return err
+			}
+			if !reply.GetSuccess() {
+				return errors.New(reply.GetReason())
+			}
+			return nil
 		})
 		if err != nil {
 			return err
 		}
-		if !reply.GetSuccess() {
-			return errors.New(reply.GetReason())
-		}
+
 	}
 	err = database.Instance.Save(&database.User{
 		Username: username,
@@ -275,12 +282,18 @@ func (m *UserManager) RemoveUser(username string) error {
 		return err
 	}
 	// add smb user
-	reply, err := yousmb.DefaultYouSMBRPCClient.Client.RemoveUser(yousmb.GetRPCTimeoutContext(), &rpc.RemoveUserMessage{Username: &username})
+	err = yousmb.ExecWithRPCClient(func(client rpc.YouSMBServiceClient) error {
+		reply, err := client.RemoveUser(yousmb.GetRPCTimeoutContext(), &rpc.RemoveUserMessage{Username: &username})
+		if err != nil {
+			return err
+		}
+		if !reply.GetSuccess() {
+			return errors.New(reply.GetReason())
+		}
+		return nil
+	})
 	if err != nil {
 		return err
-	}
-	if !reply.GetSuccess() {
-		return errors.New(reply.GetReason())
 	}
 	err = database.Instance.Unscoped().Where("username = ?", username).Delete(&database.User{Username: username}).Error
 	if err != nil {
