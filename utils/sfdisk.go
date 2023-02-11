@@ -15,7 +15,7 @@ func WipeDiskFS(device string) error {
 }
 
 func CreateAppendDiskPartition(device string, partType int, size string) error {
-	script := fmt.Sprintf("echo ,%s,%d, | sfdisk %s -a -q", size, partType, device)
+	script := fmt.Sprintf("echo ,%s,%d, | sfdisk %s", size, partType, device)
 	cmd := exec.Command("/bin/sh", "-c", script)
 	err := cmd.Run()
 	if err != nil {

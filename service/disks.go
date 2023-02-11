@@ -89,9 +89,9 @@ type DiskSmartInfo struct {
 	Attrs        []SmartInfoAttr `json:"attrs"`
 }
 
-func (d *Disk) GetSmartInfo() (*DiskSmartInfo, error) {
+func (d *Disk) GetSmartInfo() (map[string]interface{}, error) {
 	if strings.HasPrefix(d.Name, "nvme") {
-		return &DiskSmartInfo{Attrs: []SmartInfoAttr{}}, nil
+		return nil, nil
 	}
 	cmd := exec.Command("smartctl", "--all", "--json", fmt.Sprintf("/dev/%s", d.Name))
 	output, err := cmd.Output()
@@ -100,26 +100,9 @@ func (d *Disk) GetSmartInfo() (*DiskSmartInfo, error) {
 	}
 	result := map[string]interface{}{}
 	err = json.Unmarshal(output, &result)
-	info := &DiskSmartInfo{
-		ModelFamily:  result["model_family"].(string),
-		ModelName:    result["model_name"].(string),
-		SerialNumber: result["serial_number"].(string),
-		Status:       result["smart_status"].(map[string]interface{})["passed"].(bool),
-		Attrs:        []SmartInfoAttr{},
-	}
-	rawAttrs := result["ata_smart_attributes"].(map[string]interface{})["table"].([]interface{})
-	for _, rawAttr := range rawAttrs {
-		attr := SmartInfoAttr{
-			Id:        int(rawAttr.(map[string]interface{})["id"].(float64)),
-			Name:      rawAttr.(map[string]interface{})["name"].(string),
-			Worst:     int(rawAttr.(map[string]interface{})["worst"].(float64)),
-			Threshold: int(rawAttr.(map[string]interface{})["thresh"].(float64)),
-			Value:     int(rawAttr.(map[string]interface{})["raw"].(map[string]interface{})["value"].(float64)),
-		}
-		info.Attrs = append(info.Attrs, attr)
-	}
 	if err != nil {
 		return nil, err
 	}
-	return info, nil
+
+	return result, nil
 }

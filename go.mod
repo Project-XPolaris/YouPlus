@@ -6,7 +6,7 @@ require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/allentom/haruka v0.0.0-20220727070012-8da0b79e04c3
 	github.com/amoghe/go-crypt v0.0.0-20191109212615-b2ff80594b7f
-	github.com/bicomsystems/go-libzfs v0.4.0
+	github.com/bicomsystems/go-libzfs v0.3.5
 	github.com/containerd/containerd v1.4.3 // indirect
 	github.com/d-tux/go-fstab v0.0.0-20141204152952-eb4090f26517
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -36,10 +36,11 @@ require (
 	gorm.io/gorm v1.23.1
 )
 
+require github.com/anatol/smart.go v0.0.0-20230124172926-9f85b84d961e
+
 require (
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
-	github.com/anatol/smart.go v0.0.0-20230124172926-9f85b84d961e // indirect
 	github.com/andybalholm/brotli v1.0.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
@@ -72,7 +73,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/processout/grpc-go-pool v1.2.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/ulikunitz/xz v0.5.7 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
