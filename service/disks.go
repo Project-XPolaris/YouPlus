@@ -3,9 +3,10 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/projectxpolaris/youplus/utils"
 	"os/exec"
 	"strings"
+
+	"github.com/projectxpolaris/youplus/utils"
 )
 
 type Disk struct {
@@ -81,6 +82,7 @@ type SmartInfoAttr struct {
 	Threshold int    `json:"threshold"`
 	Value     int    `json:"value"`
 }
+
 type DiskSmartInfo struct {
 	ModelFamily  string          `json:"modelFamily"`
 	ModelName    string          `json:"modelName"`
@@ -91,7 +93,16 @@ type DiskSmartInfo struct {
 
 func (d *Disk) GetSmartInfo() (map[string]interface{}, error) {
 	if strings.HasPrefix(d.Name, "nvme") {
-		return nil, nil
+		cmd := exec.Command("nvme", "smart-log", "-o", "json", fmt.Sprintf("/dev/%s", d.Name))
+		output, err := cmd.Output()
+		if err != nil {
+			return nil, err
+		}
+		result := map[string]interface{}{}
+		if err := json.Unmarshal(output, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
 	}
 	cmd := exec.Command("smartctl", "--all", "--json", fmt.Sprintf("/dev/%s", d.Name))
 	output, err := cmd.Output()

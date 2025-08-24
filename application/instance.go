@@ -1,12 +1,13 @@
 package application
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/allentom/haruka"
 	"github.com/allentom/haruka/middleware"
 	"github.com/projectxpolaris/youplus/config"
 	"github.com/rs/cors"
-	"net/http"
-	"strings"
 )
 
 func RunApplication() {
@@ -31,6 +32,9 @@ func RunApplication() {
 	e.Router.GET("/share", getShareFolderList)
 	e.Router.DELETE("/share", removeShareHandler)
 	e.Router.POST("/share/update", updateShareFolder)
+	e.Router.POST("/share/sync", syncStorageAndShareHandler)
+	e.Router.GET("/smb/sections", listSMBSectionsHandler)
+	e.Router.GET("/smb/raw", getSMBRawConfigHandler)
 	e.Router.POST("/users", createUserHandler)
 	e.Router.GET("/users", getUserList)
 	e.Router.DELETE("/users", removeUserHandler)
@@ -38,12 +42,14 @@ func RunApplication() {
 	e.Router.GET("/storage", getStorageListHandler)
 	e.Router.DELETE("/storage", removeStorage)
 	e.Router.PATCH("/storage/{id}", updateStorageHandler)
+	e.Router.GET("/storage/{id}", getStorageDetailHandler)
 	e.Router.POST("/zpool", createZFSPoolHandler)
 	e.Router.GET("/zpool/{name}/info", getZFSPoolHandler)
 	e.Router.POST("/zpool/conf", createZFSPoolWithNodeHandler)
 	e.Router.GET("/zpool", getZFSPoolListHandler)
 	e.Router.DELETE("/zpool", removePoolHandler)
 	e.Router.GET("/zpool/dataset", datasetListHandler)
+	e.Router.GET("/zfs/monitor", getZFSPoolsMonitorHandler)
 	e.Router.POST("/zpool/dataset", createDatasetHandler)
 	e.Router.DELETE("/zpool/dataset", deleteDatasetHandler)
 	e.Router.POST("/zpool/dataset/snapshot", createSnapshotHandler)
@@ -63,6 +69,16 @@ func RunApplication() {
 	e.Router.POST("/account/password", changeAccountPasswordHandler)
 	e.Router.GET("/system/info", getSystemInfoHandler)
 	e.Router.GET("/system/monitor", getSystemMonitor)
+	e.Router.GET("/system/load", getSystemLoad)
+	e.Router.GET("/system/uptime", getSystemUptime)
+	e.Router.GET("/system/filesystems", getSystemFilesystems)
+	e.Router.GET("/system/netio", getSystemNetIO)
+	e.Router.GET("/system/sensors", getSystemSensors)
+	e.Router.GET("/system/processes", getSystemProcesses)
+	e.Router.GET("/system/hardware", getHardwareInfo)
+	e.Router.GET("/system/services", getSystemServicesStatusHandler)
+	e.Router.GET("/system/users", listSystemUsersHandler)
+	e.Router.POST("/system/users/enable", enableSystemUserHandler)
 	e.Router.GET("/tasks", tasksListHandler)
 	e.Router.GET("/path/readdir", ReadDirHandler)
 	e.Router.GET("/path/realpath", GetRealPathHandler)

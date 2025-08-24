@@ -9,8 +9,9 @@ import (
 const TimeLayout = "2006-01-02 15:04:05"
 
 type ZFSPoolTemplate struct {
-	Name string          `json:"name,omitempty"`
-	Tree ZFSTreeTemplate `json:"tree,omitempty"`
+	Name   string             `json:"name,omitempty"`
+	Tree   ZFSTreeTemplate    `json:"tree,omitempty"`
+	Shares []ShareFolderBrief `json:"shares,omitempty"`
 }
 
 func (t *ZFSPoolTemplate) Assign(pool libzfs.Pool) error {
@@ -27,7 +28,23 @@ func (t *ZFSPoolTemplate) Assign(pool libzfs.Pool) error {
 		t.Tree = ZFSTreeTemplate{}
 		t.Tree.Assign(&vt)
 	}
+	// attach related share folders by pool name
+	var storage database.ZFSStorage
+	if err := database.Instance.Where("mount_point = ?", name).First(&storage).Error; err == nil && storage.ID != "" {
+		var folders []database.ShareFolder
+		_ = database.Instance.Where("zfs_storage_id = ?", storage.ID).Find(&folders).Error
+		briefs := make([]ShareFolderBrief, 0, len(folders))
+		for _, f := range folders {
+			briefs = append(briefs, ShareFolderBrief{Name: f.Name, Path: f.Path})
+		}
+		t.Shares = briefs
+	}
 	return nil
+}
+
+type ShareFolderBrief struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
 }
 
 type ZFSTreeTemplate struct {
@@ -94,6 +111,11 @@ type StorageDiskPartTemplate struct {
 }
 type StoragePathTemplate struct {
 	Path string `json:"path"`
+}
+
+type StorageDetailTemplate struct {
+	StorageTemplate
+	Shares []ShareFolderBrief `json:"shares"`
 }
 
 func (t *StorageTemplate) Assign(storage service.Storage) {

@@ -1,10 +1,12 @@
 package application
 
 import (
-	"github.com/allentom/haruka"
-	"github.com/projectxpolaris/youplus/service"
 	"net/http"
 	"path/filepath"
+
+	"github.com/allentom/haruka"
+	"github.com/projectxpolaris/youplus/database"
+	"github.com/projectxpolaris/youplus/service"
 )
 
 type NewStorageRequest struct {
@@ -63,6 +65,37 @@ var updateStorageHandler haruka.RequestHandler = func(context *haruka.Context) {
 	err = service.DefaultStoragePool.UpdateStorage(id, option)
 	context.JSON(haruka.JSON{
 		"success": true,
+	})
+}
+
+var getStorageDetailHandler haruka.RequestHandler = func(context *haruka.Context) {
+	id := context.GetPathParameterAsString("id")
+	storage := service.DefaultStoragePool.GetStorageById(id)
+	if storage == nil {
+		AbortErrorWithStatus(service.StorageNotFoundError, context, http.StatusNotFound)
+		return
+	}
+	detail := &StorageDetailTemplate{}
+	detail.StorageTemplate = StorageTemplate{}
+	detail.StorageTemplate.Assign(storage)
+	// attach related shares by storage id across 3 tables
+	shares := make([]ShareFolderBrief, 0)
+	{
+		var list []database.ShareFolder
+		// query all, then match by GetStorageId helper
+		if err := database.Instance.Find(&list).Error; err == nil {
+			for _, s := range list {
+				sid := s.GetStorageId()
+				if sid == id {
+					shares = append(shares, ShareFolderBrief{Name: s.Name, Path: s.Path})
+				}
+			}
+		}
+	}
+	detail.Shares = shares
+	context.JSON(haruka.JSON{
+		"success": true,
+		"data":    detail,
 	})
 }
 var appIconHandler haruka.RequestHandler = func(context *haruka.Context) {

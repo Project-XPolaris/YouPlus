@@ -4,14 +4,15 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+
 	. "github.com/ahmetb/go-linq/v3"
 	"github.com/project-xpolaris/youplustoolkit/yousmb/rpc"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/utils"
 	"github.com/projectxpolaris/youplus/yousmb"
-	"os"
-	"os/exec"
-	"strings"
 )
 
 var (
@@ -327,6 +328,58 @@ func GetUserList() ([]string, error) {
 		return i.(*SystemUser).Username
 	}).ToSlice(&result)
 	return result, nil
+}
+
+type SystemUserWithFlag struct {
+	Username      string `json:"username"`
+	Uid           string `json:"uid"`
+	IsYouPlusUser bool   `json:"isYouPlusUser"`
+}
+
+// ListSystemUsersWithYouPlusFlag returns all system users and whether each is a YouPlus user (exists in DB)
+func ListSystemUsersWithYouPlusFlag() ([]*SystemUserWithFlag, error) {
+	users, err := GetSystemUserList()
+	if err != nil {
+		return nil, err
+	}
+	var saveUsers []database.User
+	err = database.Instance.Find(&saveUsers).Error
+	if err != nil {
+		return nil, err
+	}
+	saved := map[string]struct{}{}
+	for _, u := range saveUsers {
+		saved[u.Username] = struct{}{}
+	}
+	result := make([]*SystemUserWithFlag, 0, len(users))
+	for _, su := range users {
+		_, ok := saved[su.Username]
+		result = append(result, &SystemUserWithFlag{
+			Username:      su.Username,
+			Uid:           su.Uid,
+			IsYouPlusUser: ok,
+		})
+	}
+	return result, nil
+}
+
+// EnsureYouPlusUser adds an existing system user into YouPlus DB if not exists
+func EnsureYouPlusUser(username string) error {
+	user := DefaultUserManager.GetUserByName(username)
+	if user == nil {
+		return UserNotFoundError
+	}
+	var cnt int64
+	if err := database.Instance.Model(&database.User{}).Where("username = ?", username).Count(&cnt).Error; err != nil {
+		return err
+	}
+	if cnt > 0 {
+		return nil
+	}
+	if err := database.Instance.Save(&database.User{Username: username}).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 type SystemUserGroup struct {

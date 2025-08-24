@@ -2,6 +2,10 @@ package main
 
 import (
 	"errors"
+	"log"
+	"os"
+	"path/filepath"
+
 	srv "github.com/kardianos/service"
 	"github.com/projectxpolaris/youplus/application"
 	"github.com/projectxpolaris/youplus/config"
@@ -11,9 +15,6 @@ import (
 	"github.com/projectxpolaris/youplus/yousmb"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"log"
-	"os"
-	"path/filepath"
 )
 
 var svcConfig *srv.Config
@@ -84,6 +85,9 @@ func Program() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	logger.Info("sync zfs mounts and smb shares")
+	_, _, _ = service.SyncZFSMountsToStorage()
+	_, _ = service.SyncSmbSharesToDB()
 	logger.Info("init filesystem")
 	err = service.InitFileSystem()
 	if err != nil {

@@ -2,10 +2,14 @@ package application
 
 import (
 	"errors"
+	"net/http"
+	"strings"
+
 	"github.com/allentom/haruka"
+	librpc "github.com/project-xpolaris/youplustoolkit/yousmb/rpc"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/service"
-	"net/http"
+	"github.com/projectxpolaris/youplus/yousmb"
 )
 
 var (
@@ -230,5 +234,124 @@ var getSMBStatusHandler haruka.RequestHandler = func(context *haruka.Context) {
 		"success": true,
 		"process": processList,
 		"shares":  sharesList,
+	})
+}
+
+var syncStorageAndShareHandler haruka.RequestHandler = func(context *haruka.Context) {
+	// 1) sync ZFS mounts to storage
+	createdStorages, updatedStorages, err := service.SyncZFSMountsToStorage()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	// reload storage pool in-memory
+	service.DefaultStoragePool = service.StoragePool{Storages: []service.Storage{}}
+	_ = service.DefaultStoragePool.LoadStorage()
+
+	// 2) sync SMB shares to DB share folders
+	smbRes, err := service.SyncSmbSharesToDB()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	// 3) rebuild filesystem view
+	_ = service.InitFileSystem()
+	context.JSON(haruka.JSON{
+		"success":         true,
+		"createdStorages": createdStorages,
+		"updatedStorages": updatedStorages,
+		"createdShares":   smbRes.CreatedShares,
+		"updatedShares":   smbRes.UpdatedShares,
+		"errors":          smbRes.Errors,
+	})
+}
+
+// list SMB sections with share-folder flag
+var listSMBSectionsHandler haruka.RequestHandler = func(context *haruka.Context) {
+	// load all share folder names for quick lookup
+	var shareFolders []database.ShareFolder
+	err := database.Instance.Find(&shareFolders).Error
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	nameToShare := map[string]database.ShareFolder{}
+	for _, f := range shareFolders {
+		nameToShare[f.Name] = f
+	}
+
+	var cfg *librpc.ConfigReply
+	err = yousmb.ExecWithRPCClient(func(client librpc.YouSMBServiceClient) error {
+		var e error
+		cfg, e = client.GetConfig(yousmb.GetRPCTimeoutContext(), &librpc.Empty{})
+		return e
+	})
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	type SectionTemplate struct {
+		Name          string            `json:"name"`
+		Fields        map[string]string `json:"fields"`
+		IsShareFolder bool              `json:"isShareFolder"`
+		ShareFolderId uint              `json:"shareFolderId,omitempty"`
+	}
+	list := make([]SectionTemplate, 0)
+	if cfg != nil && cfg.Sections != nil {
+		for _, s := range cfg.Sections {
+			if s == nil || s.Name == nil || s.Fields == nil {
+				continue
+			}
+			name := strings.TrimSpace(*s.Name)
+			tmpl := SectionTemplate{
+				Name:          name,
+				Fields:        s.Fields,
+				IsShareFolder: false,
+			}
+			if sf, ok := nameToShare[name]; ok {
+				tmpl.IsShareFolder = true
+				tmpl.ShareFolderId = sf.ID
+			}
+			list = append(list, tmpl)
+		}
+	}
+	context.JSON(haruka.JSON{
+		"sections": list,
+	})
+}
+
+// get raw smb config text (reconstructed)
+var getSMBRawConfigHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var cfg *librpc.ConfigReply
+	err := yousmb.ExecWithRPCClient(func(client librpc.YouSMBServiceClient) error {
+		var e error
+		cfg, e = client.GetConfig(yousmb.GetRPCTimeoutContext(), &librpc.Empty{})
+		return e
+	})
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	var sb strings.Builder
+	if cfg != nil && cfg.Sections != nil {
+		for _, s := range cfg.Sections {
+			if s == nil || s.Name == nil || s.Fields == nil {
+				continue
+			}
+			sb.WriteString("[")
+			sb.WriteString(*s.Name)
+			sb.WriteString("]\n")
+			for k, v := range s.Fields {
+				sb.WriteString("    ")
+				sb.WriteString(k)
+				sb.WriteString(" = ")
+				sb.WriteString(v)
+				sb.WriteString("\n")
+			}
+			sb.WriteString("\n\n")
+		}
+	}
+	context.JSON(haruka.JSON{
+		"raw": sb.String(),
 	})
 }

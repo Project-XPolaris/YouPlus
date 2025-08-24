@@ -2,10 +2,11 @@ package application
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/allentom/haruka"
 	zfs "github.com/bicomsystems/go-libzfs"
 	"github.com/projectxpolaris/youplus/service"
-	"net/http"
 )
 
 type CreateZFSPoolRequestBody struct {
@@ -234,5 +235,18 @@ var deleteSnapshotHandler haruka.RequestHandler = func(context *haruka.Context) 
 	}
 	context.JSON(haruka.JSON{
 		"success": true,
+	})
+}
+
+// monitor pools
+var getZFSPoolsMonitorHandler haruka.RequestHandler = func(context *haruka.Context) {
+	stats, err := service.DefaultZFSManager.GetPoolsHealth()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+		"pools":   stats,
 	})
 }

@@ -1,8 +1,15 @@
 package service
 
 import (
+	"bufio"
+	"context"
 	"errors"
 	"fmt"
+	"os/exec"
+	"strconv"
+	"strings"
+	"time"
+
 	libzfs "github.com/bicomsystems/go-libzfs"
 )
 
@@ -10,6 +17,86 @@ var DefaultZFSManager = ZFSManager{}
 var PoolNotFoundError = errors.New("target pool not found")
 
 type ZFSManager struct {
+}
+
+type ZFSPoolHealth struct {
+	Name       string `json:"name"`
+	Size       uint64 `json:"size"`
+	Alloc      uint64 `json:"alloc"`
+	Free       uint64 `json:"free"`
+	Health     string `json:"health"`
+	State      string `json:"state"`
+	Frag       uint64 `json:"frag"`
+	Dedupratio string `json:"dedupratio"`
+}
+
+func (m *ZFSManager) GetPoolsHealth() ([]ZFSPoolHealth, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "zpool", "list", "-Hp", "-o", "name,size,alloc,free,health")
+	out, err := cmd.Output()
+	if err == nil && len(out) > 0 {
+		scanner := bufio.NewScanner(strings.NewReader(string(out)))
+		result := make([]ZFSPoolHealth, 0)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) < 5 {
+				continue
+			}
+			name := fields[0]
+			size, _ := strconv.ParseUint(fields[1], 10, 64)
+			alloc, _ := strconv.ParseUint(fields[2], 10, 64)
+			free, _ := strconv.ParseUint(fields[3], 10, 64)
+			health := fields[4]
+			result = append(result, ZFSPoolHealth{
+				Name:   name,
+				Size:   size,
+				Alloc:  alloc,
+				Free:   free,
+				Health: health,
+				State:  "",
+			})
+		}
+		if err := scanner.Err(); err == nil {
+			return result, nil
+		}
+	}
+	// fallback: try libzfs space from vdev tree
+	pools, err := libzfs.PoolOpenAll()
+	if err != nil {
+		return nil, err
+	}
+	defer libzfs.PoolCloseAll(pools)
+	result := make([]ZFSPoolHealth, 0, len(pools))
+	for _, pool := range pools {
+		name, err := pool.Name()
+		if err != nil {
+			return nil, err
+		}
+		vt, err := pool.VDevTree()
+		if err != nil {
+			return nil, err
+		}
+		size := vt.Stat.Space
+		alloc := vt.Stat.Alloc
+		free := uint64(0)
+		if size >= alloc {
+			free = size - alloc
+		}
+		result = append(result, ZFSPoolHealth{
+			Name:   name,
+			Size:   size,
+			Alloc:  alloc,
+			Free:   free,
+			Health: "UNKNOWN",
+			State:  "",
+		})
+	}
+	return result, nil
 }
 
 var VdevTypeMapping = map[string]libzfs.VDevType{
