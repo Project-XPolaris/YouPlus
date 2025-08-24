@@ -43,7 +43,7 @@ func (f *ShareFolder) GetStorageId() string {
 		return f.ZFSStorageId
 	}
 	if len(f.PartStorageId) > 0 {
-		return f.PathStorageId
+		return f.PartStorageId
 	}
 	if len(f.PathStorageId) > 0 {
 		return f.PathStorageId

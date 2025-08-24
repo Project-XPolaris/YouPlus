@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/project-xpolaris/youplustoolkit/yousmb/rpc"
 	"github.com/projectxpolaris/youplus/database"
 	"github.com/projectxpolaris/youplus/utils"
 	"github.com/projectxpolaris/youplus/yousmb"
 	"gorm.io/gorm"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 var (
@@ -230,6 +231,8 @@ type UpdateShareFolderOption struct {
 	Public        *bool    `json:"public"`
 	Readonly      *bool    `json:"readonly"`
 	Enable        *bool    `json:"enable"`
+	StorageId     *string  `json:"storageId"`
+	NewName       *string  `json:"newName"`
 }
 
 func UpdateSMBConfig(option *UpdateShareFolderOption) error {
@@ -248,6 +251,74 @@ func UpdateSMBConfig(option *UpdateShareFolderOption) error {
 	if err != nil {
 		return err
 	}
+	// handle storage change
+	if option.StorageId != nil && len(*option.StorageId) > 0 {
+		storage := DefaultStoragePool.GetStorageById(*option.StorageId)
+		if storage == nil {
+			return StorageNotFoundError
+		}
+		newPath := filepath.Join(storage.GetRootPath(), folder.Name)
+		if !strings.HasPrefix(newPath, "/") {
+			newPath = "/" + newPath
+		}
+		if mkErr := os.MkdirAll(newPath, os.ModePerm); mkErr != nil {
+			return mkErr
+		}
+		folder.Path = newPath
+		folder.ZFSStorageId = ""
+		folder.PartStorageId = ""
+		folder.PathStorageId = ""
+		switch storage.(type) {
+		case *ZFSPoolStorage:
+			folder.ZFSStorageId = storage.GetId()
+		case *DiskPartStorage:
+			folder.PartStorageId = storage.GetId()
+		case *PathStorage:
+			folder.PathStorageId = storage.GetId()
+		}
+	}
+
+	// handle rename
+	if option.NewName != nil && len(*option.NewName) > 0 && *option.NewName != folder.Name {
+		oldName := folder.Name
+		oldPath := folder.Path
+		// check source exists
+		if _, statErr := os.Stat(oldPath); statErr != nil {
+			return statErr
+		}
+		baseDir := filepath.Dir(oldPath)
+		destPath := filepath.Join(baseDir, *option.NewName)
+		if !strings.HasPrefix(destPath, "/") {
+			destPath = "/" + destPath
+		}
+		if _, statErr := os.Stat(destPath); statErr == nil {
+			return errors.New("target directory already exists")
+		}
+		if rnErr := os.Rename(oldPath, destPath); rnErr != nil {
+			return rnErr
+		}
+		folder.Name = *option.NewName
+		folder.Path = destPath
+		// sync new section first, then remove old
+		if err := SyncShareFolderOptionToSMB(&folder); err != nil {
+			return err
+		}
+		rmErr := yousmb.ExecWithRPCClient(func(client rpc.YouSMBServiceClient) error {
+			reply, e := client.RemoveFolderConfig(yousmb.GetRPCTimeoutContext(), &rpc.RemoveConfigMessage{Name: &oldName})
+			if e != nil {
+				return e
+			}
+			if !reply.GetSuccess() {
+				return errors.New(reply.GetReason())
+			}
+			return nil
+		})
+		if rmErr != nil {
+			return rmErr
+		}
+	}
+
+	// ACLs and flags
 	if option.ValidUsers != nil {
 		err = putFolderUserList(&folder, option.ValidUsers, "ValidUsers")
 		if err != nil {
@@ -305,10 +376,12 @@ func UpdateSMBConfig(option *UpdateShareFolderOption) error {
 	if option.Readonly != nil {
 		folder.Readonly = *option.Readonly
 	}
-	err = SyncShareFolderOptionToSMB(&folder)
-	if err != nil {
+
+	// for non-rename updates, ensure SMB section updated
+	if err := SyncShareFolderOptionToSMB(&folder); err != nil {
 		return err
 	}
+
 	err = database.Instance.Save(&folder).Error
 	if err != nil {
 		return err
@@ -350,7 +423,8 @@ func RemoveShare(id uint) error {
 }
 
 func GetSMBStatus() (*rpc.SMBStatusReply, error) {
-	timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	timeout, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	var reply *rpc.SMBStatusReply
 	err := yousmb.ExecWithRPCClient(func(client rpc.YouSMBServiceClient) error {
 		var err error
@@ -359,6 +433,21 @@ func GetSMBStatus() (*rpc.SMBStatusReply, error) {
 			return err
 		}
 		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return reply, nil
+}
+
+func GetSMBInfo() (*rpc.ServiceInfoReply, error) {
+	timeout, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var reply *rpc.ServiceInfoReply
+	err := yousmb.ExecWithRPCClient(func(client rpc.YouSMBServiceClient) error {
+		var err error
+		reply, err = client.GetInfo(timeout, &rpc.Empty{})
+		return err
 	})
 	if err != nil {
 		return nil, err

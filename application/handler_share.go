@@ -355,3 +355,81 @@ var getSMBRawConfigHandler haruka.RequestHandler = func(context *haruka.Context)
 		"raw": sb.String(),
 	})
 }
+
+// import SMB sections into DB with strict path matching
+var importShareFromSMBHandler haruka.RequestHandler = func(context *haruka.Context) {
+	res, err := service.ImportSmbSharesToDBStrict()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success":       true,
+		"createdShares": res.CreatedShares,
+		"updatedShares": res.UpdatedShares,
+		"errors":        res.Errors,
+	})
+}
+
+// restart SMB service by issuing a no-op update to trigger SaveFileAndRestart
+var restartSMBHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var cfg *librpc.ConfigReply
+	err := yousmb.ExecWithRPCClient(func(client librpc.YouSMBServiceClient) error {
+		var e error
+		cfg, e = client.GetConfig(yousmb.GetRPCTimeoutContext(), &librpc.Empty{})
+		return e
+	})
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	if cfg == nil || cfg.Sections == nil || len(cfg.Sections) == 0 {
+		AbortErrorWithStatus(errors.New("no smb sections to touch"), context, http.StatusBadRequest)
+		return
+	}
+	// pick first section and send an update with same fields
+	sec := cfg.Sections[0]
+	if sec == nil || sec.Name == nil {
+		AbortErrorWithStatus(errors.New("invalid smb section"), context, http.StatusInternalServerError)
+		return
+	}
+	err = yousmb.ExecWithRPCClient(func(client librpc.YouSMBServiceClient) error {
+		_, e := client.UpdateFolderConfig(yousmb.GetRPCTimeoutContext(), &librpc.AddConfigMessage{Name: sec.Name, Properties: sec.Fields})
+		return e
+	})
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{"success": true})
+}
+
+var getSMBInfoHandler haruka.RequestHandler = func(context *haruka.Context) {
+	reply, err := service.GetSMBInfo()
+	if err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{
+		"success": true,
+		"name":    reply.GetName(),
+		"status":  reply.GetStatus(),
+	})
+}
+
+type UpdateSMBRawBody struct {
+	Raw string `json:"raw"`
+}
+
+var updateSMBRawHandler haruka.RequestHandler = func(context *haruka.Context) {
+	var body UpdateSMBRawBody
+	if err := context.ParseJson(&body); err != nil {
+		AbortErrorWithStatus(err, context, http.StatusBadRequest)
+		return
+	}
+	if err := service.ApplySMBRawConfig(body.Raw); err != nil {
+		AbortErrorWithStatus(err, context, http.StatusInternalServerError)
+		return
+	}
+	context.JSON(haruka.JSON{"success": true})
+}
