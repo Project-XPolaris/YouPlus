@@ -8,5 +8,6 @@
   "rpc_addr": ":50055",
   "database": {
     "type": "sqlite"
-  }
+  },
+  "dashboard_dir": "./dist"
 }

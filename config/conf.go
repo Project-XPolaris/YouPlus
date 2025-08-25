@@ -2,9 +2,10 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 var Config AppConfig
@@ -29,6 +30,7 @@ type AppConfig struct {
 	Fstab          string          `json:"fstab"`
 	NetConfig      string          `json:"net_config"`
 	RPCAddr        string          `json:"rpc_addr"`
+	DashboardDir   string          `json:"dashboard_dir"`
 	DatabaseConfig *DatabaseConfig `json:"database"`
 }
 

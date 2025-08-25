@@ -2,10 +2,12 @@ package application
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/allentom/haruka"
 )
 
-var noAuthPath = []string{
+var noAuthExactPaths = []string{
 	"/user/auth",
 	"/admin/auth",
 	"/app/icon",
@@ -15,12 +17,21 @@ var noAuthPath = []string{
 	"/dav",
 }
 
+var noAuthPrefixes = []string{
+	"/dashboard/",
+}
+
 type AuthMiddleware struct {
 }
 
 func (m *AuthMiddleware) OnRequest(ctx *haruka.Context) {
-	for _, targetPath := range noAuthPath {
+	for _, targetPath := range noAuthExactPaths {
 		if ctx.Pattern == targetPath {
+			return
+		}
+	}
+	for _, prefix := range noAuthPrefixes {
+		if strings.HasPrefix(ctx.Pattern, prefix) {
 			return
 		}
 	}

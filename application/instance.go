@@ -2,6 +2,10 @@ package application
 
 import (
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/allentom/haruka"
@@ -125,5 +129,66 @@ func RunApplication() {
 		JWTKey: []byte(config.Config.ApiKey),
 	}))
 	e.UseMiddleware(&AuthMiddleware{})
+
+	// support /api/* prefix by reverse proxy to same server without /api
+	{
+		addr := config.Config.Addr
+		if strings.HasPrefix(addr, ":") {
+			addr = "127.0.0.1" + addr
+		}
+		if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
+			addr = "http://" + addr
+		}
+		target, _ := url.Parse(addr)
+		rp := httputil.NewSingleHostReverseProxy(target)
+		e.Router.HandlerRouter.PathPrefix("/api/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = strings.TrimPrefix(r.URL.Path, "/api")
+			rp.ServeHTTP(w, r2)
+		}))
+	}
+
+	// serve static dashboard if configured (hash route at root)
+	if len(config.Config.DashboardDir) > 0 {
+		dashboardRoot := config.Config.DashboardDir
+		if !filepath.IsAbs(dashboardRoot) {
+			if abs, err := filepath.Abs(dashboardRoot); err == nil {
+				dashboardRoot = abs
+			}
+		}
+		// optional: keep /dashboard/* compatibility by serving index
+		e.Router.HandlerRouter.PathPrefix("/dashboard/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			indexPath := filepath.Join(dashboardRoot, "index.html")
+			if _, err := os.Stat(indexPath); err == nil {
+				http.ServeFile(w, r, indexPath)
+				return
+			}
+			http.NotFound(w, r)
+		}))
+
+		// root-level static assets and hash fallback
+		e.Router.HandlerRouter.PathPrefix("/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/api" {
+				http.NotFound(w, r)
+				return
+			}
+			if r.URL.Path != "/" && filepath.Ext(r.URL.Path) != "" {
+				reqPath := strings.TrimPrefix(r.URL.Path, "/")
+				reqPath = filepath.Clean(reqPath)
+				fullPath := filepath.Join(dashboardRoot, reqPath)
+				if fi, err := os.Stat(fullPath); err == nil && !fi.IsDir() {
+					http.ServeFile(w, r, fullPath)
+					return
+				}
+			}
+			indexPath := filepath.Join(dashboardRoot, "index.html")
+			if _, err := os.Stat(indexPath); err == nil {
+				http.ServeFile(w, r, indexPath)
+				return
+			}
+			http.NotFound(w, r)
+		}))
+	}
+
 	e.RunAndListen(config.Config.Addr)
 }
